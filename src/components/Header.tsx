@@ -1,25 +1,30 @@
-import React from 'react';
-import { User, TeamRequest } from '../types';
+import React, { useState } from 'react';
+import { User } from '../types';
 import { 
-  Users, 
-  Award, 
-  UserCheck, 
-  Layers, 
-  Trophy, 
   Bell, 
-  ChevronDown,
+  ChevronDown, 
+  LogOut, 
+  User as UserIcon, 
+  Zap,
+  Search,
+  Compass,
+  Briefcase,
+  Trophy,
   Sparkles,
-  ShieldAlert
+  Layers
 } from 'lucide-react';
+import { renderAvatar } from '../utils/avatars';
 
 interface HeaderProps {
-  activeTab: 'discovery' | 'assessment' | 'profile' | 'teams' | 'hackathons';
-  setActiveTab: (tab: 'discovery' | 'assessment' | 'profile' | 'teams' | 'hackathons') => void;
+  activeTab: 'discovery' | 'assessment' | 'profile' | 'teams' | 'hackathons' | 'leaderboard';
+  setActiveTab: (tab: 'discovery' | 'assessment' | 'profile' | 'teams' | 'hackathons' | 'leaderboard') => void;
   currentUser: User;
   allUsers: User[];
   onSwitchUser: (user: User) => void;
   pendingRequestsCount: number;
   onOpenRequestsModal: () => void;
+  onLogout: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -29,179 +34,299 @@ export const Header: React.FC<HeaderProps> = ({
   allUsers,
   onSwitchUser,
   pendingRequestsCount,
-  onOpenRequestsModal
+  onOpenRequestsModal,
+  onLogout,
+  onOpenCommandPalette
 }) => {
-  const [showUserDropdown, setShowUserDropdown] = React.useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showXPPopover, setShowXPPopover] = useState(false);
+  const [showExploreDropdown, setShowExploreDropdown] = useState(false);
+  const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false);
+
+  const currentLevel = currentUser.level || 1;
+  const currentXP = currentUser.xpPoints || 150;
+  const nextLevelXP = currentLevel * 500;
+  const progressPercent = Math.min(100, Math.round((currentXP / nextLevelXP) * 100));
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="sticky top-0 z-40 bg-[#0a0714]/90 backdrop-blur-2xl border-b border-purple-500/15 transition-all">
+      <div className="max-w-[1536px] mx-auto px-6 lg:px-10">
+        <div className="flex items-center justify-between h-20 gap-6">
           
-          {/* Logo & Platform Name */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('discovery')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-blue-600 to-emerald-500 flex items-center justify-center text-white font-black text-xl shadow-md shadow-indigo-500/20 ring-1 ring-white/20">
-              SQ
+          {/* Brand Logo */}
+          <div 
+            className="flex items-center gap-3 cursor-pointer group shrink-0" 
+            onClick={() => setActiveTab('discovery')}
+          >
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-500 to-purple-400 flex items-center justify-center text-white font-extrabold text-xl shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform">
+              &#125;
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 dark:from-white dark:via-indigo-200 dark:to-blue-300 bg-clip-text text-transparent">
-                  SquadUP
-                </span>
-                <span className="hidden sm:inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                  Verified Teams
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden md:block">
-                Build the Right Team. Build Better Ideas.
-              </p>
+            <div className="flex flex-col">
+              <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-white font-sans flex items-center gap-2">
+                SquadUP
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" title="System Online"></span>
+              </span>
+              <span className="text-[9px] uppercase font-bold text-purple-400 tracking-[0.2em] -mt-1">
+                Hackathon Engine
+              </span>
             </div>
           </div>
 
-          {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
-            <button
-              onClick={() => setActiveTab('discovery')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'discovery'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Users size={15} />
-              <span>Discover Teammates</span>
-            </button>
+          {/* Center Navigation Links - Spacious & Clean Lines */}
+          <nav className="hidden lg:flex items-center gap-8 xl:gap-10">
+            
+            {/* EXPLORE GROUP DROPDOWN */}
+            <div className="relative">
+              <button
+                onClick={() => setShowExploreDropdown(!showExploreDropdown)}
+                className={`py-2 text-xs uppercase tracking-widest font-bold transition-all flex items-center gap-2 cursor-pointer relative ${
+                  activeTab === 'discovery' || activeTab === 'hackathons'
+                    ? 'text-white border-b-2 border-purple-400 text-shadow-glow'
+                    : 'text-slate-400 hover:text-purple-300'
+                }`}
+              >
+                <Compass size={15} className={activeTab === 'discovery' || activeTab === 'hackathons' ? 'text-purple-400' : ''} />
+                <span>EXPLORE</span>
+                <ChevronDown size={13} className={`transition-transform duration-200 ${showExploreDropdown ? 'rotate-180 text-purple-400' : 'text-slate-500'}`} />
+              </button>
 
-            <button
-              onClick={() => setActiveTab('assessment')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'assessment'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <Award size={15} />
-              <span>Skill Verification</span>
-            </button>
+              {showExploreDropdown && (
+                <div 
+                  className="absolute top-full left-0 mt-3 w-56 bg-[#120a24]/95 border border-purple-500/30 rounded-2xl shadow-2xl py-2.5 z-50 backdrop-blur-2xl animate-fade-in"
+                  onMouseLeave={() => setShowExploreDropdown(false)}
+                >
+                  <button
+                    onClick={() => {
+                      setActiveTab('discovery');
+                      setShowExploreDropdown(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-left text-xs font-bold text-slate-200 hover:bg-purple-950/50 hover:text-white transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <UserIcon size={15} className="text-purple-400" />
+                      <span>Teammate Discovery</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+                      7
+                    </span>
+                  </button>
 
+                  <button
+                    onClick={() => {
+                      setActiveTab('hackathons');
+                      setShowExploreDropdown(false);
+                    }}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-left text-xs font-bold text-slate-200 hover:bg-purple-950/50 hover:text-white transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Trophy size={15} className="text-amber-400" />
+                      <span>Hackathons Hub</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+                      35
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* WORKSPACE & SQUADS */}
             <button
               onClick={() => setActiveTab('teams')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`py-2 text-xs uppercase tracking-widest font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 activeTab === 'teams'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'text-white border-b-2 border-purple-400'
+                  : 'text-slate-400 hover:text-purple-300'
               }`}
             >
-              <Layers size={15} />
-              <span>Teams & Workspace</span>
+              <Briefcase size={15} className={activeTab === 'teams' ? 'text-purple-400' : ''} />
+              <span>WORKSPACE</span>
+              <sup className="text-[10px] text-purple-400 font-extrabold ml-0.5">9</sup>
             </button>
 
+            {/* SKILL ENGINE & QUIZ */}
             <button
-              onClick={() => setActiveTab('hackathons')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                activeTab === 'hackathons'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              onClick={() => setActiveTab('assessment')}
+              className={`py-2 text-xs uppercase tracking-widest font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'assessment'
+                  ? 'text-white border-b-2 border-purple-400'
+                  : 'text-slate-400 hover:text-purple-300'
               }`}
             >
-              <Trophy size={15} />
-              <span>Hackathons</span>
+              <Sparkles size={15} className={activeTab === 'assessment' ? 'text-purple-400' : ''} />
+              <span>SKILL ENGINE</span>
             </button>
 
+            {/* LEADERBOARD */}
+            <button
+              onClick={() => setActiveTab('leaderboard')}
+              className={`py-2 text-xs uppercase tracking-widest font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'leaderboard'
+                  ? 'text-white border-b-2 border-purple-400'
+                  : 'text-slate-400 hover:text-purple-300'
+              }`}
+            >
+              <Trophy size={15} className={activeTab === 'leaderboard' ? 'text-purple-400' : ''} />
+              <span>LEADERBOARD</span>
+            </button>
+
+            {/* MY PROFILE */}
             <button
               onClick={() => setActiveTab('profile')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`py-2 text-xs uppercase tracking-widest font-bold transition-all cursor-pointer ${
                 activeTab === 'profile'
-                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'text-white border-b-2 border-purple-400'
+                  : 'text-slate-400 hover:text-purple-300'
               }`}
             >
-              <UserCheck size={15} />
-              <span>My Profile</span>
+              <span>PROFILE</span>
             </button>
           </nav>
 
-          {/* Right Actions: Requests Bell & User Switcher */}
-          <div className="flex items-center gap-3">
+          {/* Right Actions & Controls - Well Spaced */}
+          <div className="flex items-center gap-3.5 xl:gap-5 shrink-0">
             
-            {/* Team Invitations Bell */}
+            {/* Global Cmd + K Search Trigger Button */}
+            {onOpenCommandPalette && (
+              <button
+                onClick={onOpenCommandPalette}
+                className="hidden sm:flex items-center gap-2.5 px-4 py-2 rounded-full bg-[#120a24] border border-purple-500/25 hover:border-purple-400/50 text-slate-300 hover:text-white text-xs font-medium transition cursor-pointer shadow-md"
+                title="Open Command Palette (Cmd + K)"
+              >
+                <Search size={14} className="text-purple-400" />
+                <span className="hidden xl:inline">Search...</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/30 text-[10px] text-purple-300 font-mono">
+                  ⌘K
+                </kbd>
+              </button>
+            )}
+
+            {/* Team Invitations Pill Button */}
             <button
               onClick={onOpenRequestsModal}
-              className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border border-slate-200/80 dark:border-slate-700/80"
-              title="Team Invitations & Requests"
+              className="relative px-4 py-2 rounded-full bg-[#120a24] border border-purple-500/25 hover:border-purple-400/50 text-white text-xs font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-2 shadow-md"
             >
-              <Bell size={18} />
+              <Bell size={14} className="text-purple-400" />
+              <span className="hidden sm:inline">INVITES</span>
               {pendingRequestsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center animate-pulse">
+                <span className="w-5 h-5 rounded-full bg-purple-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-purple-500/40">
                   {pendingRequestsCount}
                 </span>
               )}
             </button>
 
-            {/* Profile Selector / Identity Switcher */}
+            {/* Level & XP Status Widget with Popover */}
+            <div className="relative hidden xl:block">
+              <button
+                onClick={() => setShowXPPopover(!showXPPopover)}
+                className="flex items-center gap-2 bg-purple-950/40 border border-purple-500/30 hover:border-purple-400/60 px-4 py-2 rounded-full text-xs font-bold transition cursor-pointer shadow-md"
+              >
+                <Zap size={14} className="text-purple-400 fill-purple-400" />
+                <span className="text-purple-300">Lvl {currentLevel}</span>
+                <span className="text-slate-500">•</span>
+                <span className="text-slate-200">{currentXP} XP</span>
+              </button>
+
+              {/* XP Progress Popover */}
+              {showXPPopover && (
+                <div 
+                  className="absolute right-0 mt-2 w-60 rounded-2xl bg-[#140e24] border border-purple-500/30 shadow-2xl p-4 z-50 backdrop-blur-2xl"
+                  onMouseLeave={() => setShowXPPopover(false)}
+                >
+                  <div className="flex items-center justify-between text-xs font-bold text-white mb-1">
+                    <span>Rank Progress</span>
+                    <span className="text-purple-400">Level {currentLevel}</span>
+                  </div>
+                  <div className="w-full bg-purple-950/60 rounded-full h-2 overflow-hidden mb-2 border border-purple-500/20">
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-indigo-400 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${progressPercent}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] text-slate-400">
+                    <span>{currentXP} XP</span>
+                    <span>{nextLevelXP} XP (Level {currentLevel + 1})</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* User Profile Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center gap-2.5 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="flex items-center gap-2 p-1.5 rounded-full border border-purple-500/30 bg-[#140e24] hover:border-purple-400/60 transition cursor-pointer"
               >
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-8 h-8 rounded-lg object-cover ring-2 ring-indigo-500/30"
-                />
-                <div className="text-left hidden lg:block pr-1">
-                  <div className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-none">
+                <div className="w-8 h-8 rounded-full overflow-hidden border border-purple-500/30 flex items-center justify-center p-0.5 bg-slate-950 shrink-0">
+                  {renderAvatar(currentUser.avatar, "w-full h-full")}
+                </div>
+                <div className="text-left hidden xl:block pr-1">
+                  <div className="text-xs font-bold text-white leading-none truncate max-w-[90px]">
                     {currentUser.name}
                   </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                  <div className="text-[9px] text-purple-300 font-medium mt-0.5 truncate max-w-[90px]">
                     {currentUser.role}
                   </div>
                 </div>
                 <ChevronDown size={14} className="text-slate-400" />
               </button>
 
-              {/* User Switcher Dropdown */}
+              {/* Profile Menu Dropdown */}
               {showUserDropdown && (
-                <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl py-2 z-50">
-                  <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                      Switch User Identity (Review Demo)
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Select a user to test profiles, team invites, and verification tests:
+                <div 
+                  className="absolute right-0 mt-2 w-64 rounded-3xl bg-[#140e24] border border-purple-500/30 shadow-2xl py-2 z-50 backdrop-blur-2xl"
+                  onMouseLeave={() => setShowUserDropdown(false)}
+                >
+                  <div className="px-4 py-3 border-b border-purple-500/15">
+                    <p className="text-xs font-bold text-white truncate">{currentUser.name}</p>
+                    <p className="text-[10px] text-purple-300 font-medium truncate mt-0.5">
+                      {currentUser.role} • {currentUser.college || 'SquadUP Member'}
                     </p>
                   </div>
 
-                  <div className="max-h-64 overflow-y-auto py-1">
-                    {allUsers.map((u) => {
-                      const isCurrent = u.id === currentUser.id;
-                      return (
-                        <button
-                          key={u.id}
-                          onClick={() => {
-                            onSwitchUser(u);
-                            setShowUserDropdown(false);
-                          }}
-                          className={`w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
-                            isCurrent ? 'bg-indigo-50/70 dark:bg-indigo-950/40' : ''
-                          }`}
-                        >
-                          <img
-                            src={u.avatar}
-                            alt={u.name}
-                            className="w-8 h-8 rounded-lg object-cover"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                              {u.name} {isCurrent && <span className="text-indigo-600 dark:text-indigo-400 text-[10px] font-semibold">(Active)</span>}
-                            </div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                              {u.role} • {u.college}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setActiveTab('profile');
+                        setShowUserDropdown(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-semibold text-slate-200 hover:bg-purple-950/40 hover:text-white transition"
+                    >
+                      <UserIcon size={14} className="text-purple-400" />
+                      <span>My Profile & Skills</span>
+                    </button>
+
+                    <div className="px-4 py-2 border-t border-purple-500/10">
+                      <p className="text-[10px] uppercase font-bold text-slate-400 mb-1.5">Switch Identity Demo</p>
+                      <div className="space-y-1">
+                        {allUsers.slice(0, 3).map((u) => (
+                          <button
+                            key={u.id}
+                            onClick={() => {
+                              onSwitchUser(u);
+                              setShowUserDropdown(false);
+                            }}
+                            className={`w-full text-left px-2 py-1 rounded text-[11px] flex items-center justify-between transition ${
+                              u.id === currentUser.id ? 'bg-purple-950/60 text-purple-300 font-bold' : 'text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            <span>{u.name} ({u.role.split(' ')[0]})</span>
+                            {u.id === currentUser.id && <span className="text-[9px] text-emerald-400 font-bold">Active</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setShowUserDropdown(false);
+                        onLogout();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-semibold text-rose-400 hover:bg-rose-950/30 transition border-t border-purple-500/10 mt-1"
+                    >
+                      <LogOut size={14} />
+                      <span>Logout Session</span>
+                    </button>
                   </div>
                 </div>
               )}
@@ -209,47 +334,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           </div>
         </div>
-
-        {/* Mobile Tab bar */}
-        <div className="flex md:hidden items-center justify-around py-2 border-t border-slate-100 dark:border-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300">
-          <button
-            onClick={() => setActiveTab('discovery')}
-            className={`flex flex-col items-center gap-0.5 p-1 ${activeTab === 'discovery' ? 'text-indigo-600 font-bold' : ''}`}
-          >
-            <Users size={16} />
-            <span>Discover</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('assessment')}
-            className={`flex flex-col items-center gap-0.5 p-1 ${activeTab === 'assessment' ? 'text-indigo-600 font-bold' : ''}`}
-          >
-            <Award size={16} />
-            <span>Test</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('teams')}
-            className={`flex flex-col items-center gap-0.5 p-1 ${activeTab === 'teams' ? 'text-indigo-600 font-bold' : ''}`}
-          >
-            <Layers size={16} />
-            <span>Teams</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('hackathons')}
-            className={`flex flex-col items-center gap-0.5 p-1 ${activeTab === 'hackathons' ? 'text-indigo-600 font-bold' : ''}`}
-          >
-            <Trophy size={16} />
-            <span>Hacks</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center gap-0.5 p-1 ${activeTab === 'profile' ? 'text-indigo-600 font-bold' : ''}`}
-          >
-            <UserCheck size={16} />
-            <span>Profile</span>
-          </button>
-        </div>
-
       </div>
     </header>
   );
 };
+
+
+

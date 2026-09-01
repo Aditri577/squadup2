@@ -80,6 +80,23 @@ export interface User {
   lookingForTeam: boolean;
   teamId?: string;
   joinedAt: string;
+  xpPoints?: number;
+  level?: number;
+  experience?: string;
+  availability?: string;
+  hackathons?: string[];
+}
+
+export interface TeammateFeedback {
+  id: string;
+  senderId: string;
+  senderName: string;
+  receiverId: string;
+  teamId: string;
+  rating: number; // 1 to 5
+  comment: string;
+  tags: string[]; // e.g. ["Tech Wizard", "Good Collaborator"]
+  createdAt: string;
 }
 
 export interface TeamMember {

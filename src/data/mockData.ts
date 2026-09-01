@@ -17,6 +17,9 @@ export const INITIAL_USERS: User[] = [
     lookingForTeam: true,
     teamId: 'team-squadup-core',
     joinedAt: '2026-01-15',
+    experience: 'Advanced (3+ yrs)',
+    availability: 'Weekends',
+    hackathons: ['AI Innovations Global Hackathon 2026', 'SIH 2026'],
     skills: [
       {
         id: 'sk-1',
@@ -99,6 +102,9 @@ export const INITIAL_USERS: User[] = [
     preferredDomains: ['AI/GenAI', 'HealthTech'],
     lookingForTeam: true,
     joinedAt: '2026-02-01',
+    experience: 'Intermediate (1-3 yrs)',
+    availability: 'Weekdays',
+    hackathons: ['AI Innovations Global Hackathon 2026'],
     skills: [
       {
         id: 'sk-5',
@@ -157,6 +163,9 @@ export const INITIAL_USERS: User[] = [
     lookingForTeam: true,
     teamId: 'team-squadup-core',
     joinedAt: '2026-03-10',
+    experience: 'Advanced (3+ yrs)',
+    availability: 'Weekends',
+    hackathons: ['DesignJam National UX Challenge', 'SIH 2026'],
     skills: [
       {
         id: 'sk-7',
@@ -193,6 +202,9 @@ export const INITIAL_USERS: User[] = [
     preferredDomains: ['Web3', 'FinTech', 'Cloud/Infra'],
     lookingForTeam: true,
     joinedAt: '2026-04-05',
+    experience: 'Advanced (3+ yrs)',
+    availability: 'Part-time',
+    hackathons: ['FinTech Future Sprint 2026', 'SIH 2026'],
     skills: [
       {
         id: 'sk-9',
@@ -238,6 +250,9 @@ export const INITIAL_USERS: User[] = [
     preferredDomains: ['AI/GenAI', 'FinTech'],
     lookingForTeam: true,
     joinedAt: '2026-05-12',
+    experience: 'Beginner (<1 yr)',
+    availability: 'Weekends',
+    hackathons: ['AI Innovations Global Hackathon 2026', 'SIH 2026'],
     skills: [
       {
         id: 'sk-12',
@@ -265,6 +280,9 @@ export const INITIAL_USERS: User[] = [
     preferredDomains: ['HealthTech', 'Social Good'],
     lookingForTeam: true,
     joinedAt: '2026-06-01',
+    experience: 'Intermediate (1-3 yrs)',
+    availability: 'Weekdays',
+    hackathons: ['FinTech Future Sprint 2026'],
     skills: [
       {
         id: 'sk-13',
@@ -334,6 +352,21 @@ export const INITIAL_HACKATHONS: Hackathon[] = [
     location: 'Virtual',
     tags: ['Figma', 'Accessibility', 'Research', 'Prototyping'],
     prizes: 'Design Internships & $10,000'
+  },
+  {
+    id: 'hack-4',
+    title: 'SIH 2026',
+    organizer: 'Ministry of Education, Government of India',
+    domain: 'Social Good',
+    banner: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=1000',
+    startDate: '2026-10-10',
+    endDate: '2026-10-12',
+    maxTeamSize: 6,
+    registeredTeamsCount: 2350,
+    description: 'Smart India Hackathon 2026 - a nationwide initiative to provide students with a platform to solve some of the pressing problems we face in our daily lives.',
+    location: 'Nodal Centers Across India',
+    tags: ['IoT', 'AI/ML', 'Agriculture', 'Healthcare', 'Cybersecurity', 'Web/Mobile App'],
+    prizes: '₹1,00,000 per Problem Statement'
   }
 ];
 

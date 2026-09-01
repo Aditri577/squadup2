@@ -302,25 +302,25 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
   };
 
   return (
-    <div ref={containerRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-slate-50 dark:bg-slate-950 min-h-screen">
+    <div ref={containerRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
       
       {/* 1. IDLE STATE: Select Skill Assessment */}
       {testState === 'idle' && (
         <div className="space-y-8">
           
           {/* Hero Banner */}
-          <div className="bg-gradient-to-r from-indigo-900 via-indigo-850 to-blue-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 text-white shadow-2xl relative overflow-hidden glow-indigo">
             <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
             
             <div className="relative z-10 max-w-3xl space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-indigo-200 text-xs font-semibold backdrop-blur-md border border-white/10">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 text-xs font-bold border border-cyan-500/30 glow-cyan">
                 <ShieldAlert size={14} className="text-emerald-400" />
-                Proctored Skill Verification Engine
+                Proctored Skill Verification Engine 2.0
               </div>
 
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
                 Verify Your Technical Skills.<br/>
-                <span className="text-indigo-300">Earn Badges. Stand Out to Teammates.</span>
+                <span className="gradient-text">Earn Badges. Stand Out to Teammates.</span>
               </h1>
 
               <p className="text-slate-200 text-sm sm:text-base leading-relaxed">
@@ -367,7 +367,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
                 return (
                   <div 
                     key={cat.name}
-                    className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group"
+                    className="nixtio-card p-6 flex flex-col justify-between group"
                   >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between">
@@ -375,29 +375,29 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
                         {userSkill ? (
                           <BadgePill level={userSkill.badgeLevel} scorePercent={userSkill.scorePercent} showScore />
                         ) : (
-                          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/5 text-purple-300 border border-white/10">
                             Unverified
                           </span>
                         )}
                       </div>
 
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      <h3 className="text-lg font-extrabold text-white group-hover:text-purple-300 transition-colors">
                         {cat.name}
                       </h3>
 
-                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                      <p className="text-xs text-purple-200/70 leading-relaxed">
                         {cat.desc}
                       </p>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
-                        <Clock size={13} /> 20 Questions • 15 Mins
+                    <div className="mt-6 pt-4 border-t border-purple-500/10 flex items-center justify-between">
+                      <span className="text-[11px] font-semibold text-purple-300/60 flex items-center gap-1">
+                        <Clock size={13} className="text-purple-400" /> 20 MCQ • 15 Mins
                       </span>
 
                       <button
                         onClick={() => startPreparation(cat.name)}
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition shadow-lg hover:shadow-purple-500/30 cursor-pointer"
                       >
                         <span>Start Test</span>
                         <ChevronRight size={14} />
@@ -665,7 +665,8 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {Object.entries(testResult.topicBreakdown).map(([topic, data]) => {
+                {Object.entries(testResult.topicBreakdown).map(([topic, rawData]) => {
+                  const data = rawData as { correct: number; total: number };
                   const topicPercent = Math.round((data.correct / data.total) * 100);
                   return (
                     <div key={topic} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
