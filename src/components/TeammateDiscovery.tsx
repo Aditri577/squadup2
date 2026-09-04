@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { Reveal, CountUp } from './Motion';
 import { User, UserRole, BadgeLevel, TeamRequest } from '../types';
 import { BadgePill } from './BadgePill';
 import { AISquadRecommender } from './AISquadRecommender';
@@ -250,21 +252,21 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
       {/* Nixtio Hero Section matching the screenshot */}
       <div className="relative rounded-[36px] bg-[#141022]/90 border border-purple-500/20 p-8 sm:p-12 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.6)] overflow-hidden">
         {/* Ambient violet light blob */}
-        <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-purple-600/20 blur-3xl pointer-events-none"></div>
-        <div className="absolute -left-20 -bottom-20 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl pointer-events-none"></div>
+        <div className="absolute -right-20 -top-20 w-96 h-96 rounded-full bg-purple-600/20 blur-3xl pointer-events-none animate-aurora"></div>
+        <div className="absolute -left-20 -bottom-20 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl pointer-events-none animate-aurora-slow"></div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start relative z-10">
           {/* Main Huge Typography Headline */}
-          <div className="lg:col-span-8 space-y-4">
-            <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.1] font-sans">
+          <Reveal className="lg:col-span-8 space-y-4">
+            <h1 className="text-4xl sm:text-6xl font-extrabold text-gradient tracking-tight leading-[1.1] font-display">
               <span className="text-purple-400 font-light mr-2">&#125;</span>
               SquadUP<br/>
               Is a Premier AI Teammate & Verification Platform
             </h1>
-          </div>
+          </Reveal>
 
           {/* Right Subtext & Action Pill */}
-          <div className="lg:col-span-4 space-y-6 pt-2">
+          <Reveal delay={0.15} className="lg:col-span-4 space-y-6 pt-2">
             <p className="text-xs sm:text-sm text-purple-200/80 leading-relaxed">
               <span className="text-purple-400 mr-1">&#125;</span>
               Empirically verifying technical skill capabilities with anti-cheat proctored tests, AI synergy matchmaking, and live team sprint boards.
@@ -279,26 +281,26 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
             >
               FIND TEAMMATES
             </button>
-          </div>
+          </Reveal>
         </div>
 
         {/* Big Metrics Cards Row (Matching 192k / 34 cards from screenshot) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-10 pt-8 border-t border-purple-500/10">
+        <Reveal delay={0.25} className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-10 pt-8 border-t border-purple-500/10">
           <div className="bg-[#0c0915]/80 border border-white/10 rounded-[24px] p-6 space-y-1 backdrop-blur-md">
-            <div className="text-4xl font-extrabold text-white tracking-tight">192k</div>
+            <CountUp value={192} suffix="k" className="text-4xl font-extrabold text-white tracking-tight font-display" />
             <div className="text-xs font-semibold text-purple-300/70 uppercase tracking-wider">Verified Skill Badges</div>
           </div>
 
           <div className="bg-[#0c0915]/80 border border-white/10 rounded-[24px] p-6 space-y-1 backdrop-blur-md">
-            <div className="text-4xl font-extrabold text-white tracking-tight">34</div>
+            <CountUp value={34} className="text-4xl font-extrabold text-white tracking-tight font-display" />
             <div className="text-xs font-semibold text-purple-300/70 uppercase tracking-wider">Unique Squads Matched</div>
           </div>
 
           <div className="bg-[#0c0915]/80 border border-white/10 rounded-[24px] p-6 space-y-1 backdrop-blur-md">
-            <div className="text-4xl font-extrabold text-purple-300 tracking-tight">98%</div>
+            <CountUp value={98} suffix="%" className="text-4xl font-extrabold text-purple-300 tracking-tight font-display" />
             <div className="text-xs font-semibold text-purple-300/70 uppercase tracking-wider">AI Synergy Precision</div>
           </div>
-        </div>
+        </Reveal>
       </div>
 
       {/* AI Squad Gap Recommender Widget */}
@@ -512,13 +514,18 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
 
       {/* Teammate Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUsers.map((user) => {
+        {filteredUsers.map((user, index) => {
           const matchResult = calculateUserMatchScore(user, ['Backend Developer', 'AI/ML Engineer'], currentUser.preferredDomains);
           const greenBadges = user.skills.filter(s => s.badgeLevel === 'Green');
 
           return (
-            <div
+            <motion.div
               key={user.id}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              whileHover={{ y: -6 }}
+              transition={{ duration: 0.5, delay: Math.min(index * 0.07, 0.35), ease: [0.22, 1, 0.36, 1] }}
               className="nixtio-card p-6 flex flex-col justify-between space-y-5 relative group"
             >
               {/* Compatibility Match Badge */}
@@ -629,7 +636,7 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
                 </button>
               </div>
 
-            </div>
+            </motion.div>
           );
         })}
       </div>

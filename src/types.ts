@@ -31,7 +31,15 @@ export interface Skill {
 export interface AntiCheatLog {
   id: string;
   timestamp: string;
-  event: 'TAB_SWITCH' | 'WINDOW_BLUR' | 'MOUSE_LEAVE' | 'COPY_PASTE_ATTEMPT' | 'FULLSCREEN_EXIT';
+  event:
+    | 'TAB_SWITCH'
+    | 'WINDOW_BLUR'
+    | 'MOUSE_LEAVE'
+    | 'COPY_PASTE_ATTEMPT'
+    | 'FULLSCREEN_EXIT'
+    | 'CAMERA_OFF'
+    | 'MIC_MUTED'
+    | 'PROCTORING_TERMINATED';
   message: string;
   severity: 'low' | 'medium' | 'high';
 }
@@ -57,6 +65,8 @@ export interface TestResult {
   correctCount: number;
   badgeLevel: BadgeLevel;
   warningCount: number;
+  terminated?: boolean;
+  terminationReason?: string;
   completedAt: string;
   topicBreakdown: Record<string, { correct: number; total: number }>;
   antiCheatLogs: AntiCheatLog[];

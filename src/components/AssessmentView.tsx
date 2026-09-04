@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, SkillCategory, Question, TestResult, AntiCheatLog, BadgeLevel } from '../types';
 import { getRandomQuestions } from '../data/questionBank';
 import { BadgePill } from './BadgePill';
+import { useProctoring } from '../utils/useProctoring';
 import confetti from 'canvas-confetti';
 import { 
   Award, 
@@ -10,7 +11,6 @@ import {
   CheckCircle, 
   XCircle, 
   AlertCircle, 
-  Maximize2, 
   RefreshCw, 
   ChevronRight, 
   ChevronLeft,
@@ -20,13 +20,23 @@ import {
   RotateCcw,
   Sparkles,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Video,
+  VideoOff,
+  Mic,
+  MicOff,
+  Ban
 } from 'lucide-react';
 
 interface AssessmentViewProps {
   currentUser: User;
   onUpdateUserSkills: (updatedUser: User) => void;
 }
+
+// Three strikes and the session auto-submits with a termination flag.
+const MAX_VIOLATIONS = 3;
+// Events serious enough to cost a strike; the rest are logged only.
+const STRIKE_EVENTS: AntiCheatLog['event'][] = ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'CAMERA_OFF', 'MIC_MUTED'];
 
 const CATEGORIES: { name: SkillCategory; desc: string; icon: string }[] = [
   { name: 'Frontend (React/JS)', desc: 'React 18+, Virtual DOM, Hooks, ES6, State & Async JS', icon: '⚛️' },
@@ -41,6 +51,7 @@ const CATEGORIES: { name: SkillCategory; desc: string; icon: string }[] = [
 export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onUpdateUserSkills }) => {
   const [selectedCategory, setSelectedCategory] = useState<SkillCategory | null>(null);
   const [testState, setTestState] = useState<'idle' | 'briefing' | 'active' | 'completed'>('idle');
+  const [launching, setLaunching] = useState<boolean>(false);
   
   // Test Active State
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -58,13 +69,29 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
   const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Helper to add Anti-Cheat Event Log
+  // Event listeners are registered once per session, so they read the live values
+  // through refs instead of the stale render closure they were created in.
+  const questionsRef = useRef<Question[]>([]);
+  const answersRef = useRef<Record<number, number>>({});
+  const logsRef = useRef<AntiCheatLog[]>([]);
+  const strikesRef = useRef<number>(0);
+  const categoryRef = useRef<SkillCategory | null>(null);
+  const testStateRef = useRef<'idle' | 'briefing' | 'active' | 'completed'>('idle');
+
+  const enterState = (next: 'idle' | 'briefing' | 'active' | 'completed') => {
+    testStateRef.current = next;
+    setTestState(next);
+  };
+
   const logAntiCheatEvent = (
     event: AntiCheatLog['event'], 
     message: string, 
     severity: AntiCheatLog['severity'] = 'medium'
   ) => {
+    if (testStateRef.current !== 'active') return;
+
     const newLog: AntiCheatLog = {
       id: `acl-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       timestamp: new Date().toISOString(),
@@ -73,14 +100,41 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
       severity
     };
 
-    setAntiCheatLogs(prev => [newLog, ...prev]);
-    setWarningCount(prev => prev + 1);
-    setLatestWarning(message);
+    logsRef.current = [newLog, ...logsRef.current];
+    setAntiCheatLogs(logsRef.current);
 
+    const countsAsStrike = STRIKE_EVENTS.includes(event);
+    const strikes = countsAsStrike ? strikesRef.current + 1 : strikesRef.current;
+    if (countsAsStrike) {
+      strikesRef.current = strikes;
+      setWarningCount(strikes);
+    }
+
+    setLatestWarning(message);
     setTimeout(() => {
-      setLatestWarning(null);
+      setLatestWarning(prev => (prev === message ? null : prev));
     }, 4000);
+
+    if (countsAsStrike && strikes >= MAX_VIOLATIONS) {
+      finishAssessment({
+        terminated: true,
+        reason: `Auto-submitted after ${MAX_VIOLATIONS} proctoring violations. Final flag: ${message}`
+      });
+    }
   };
+
+  // Camera + microphone presence monitoring (live only, never recorded)
+  const proctoring = useProctoring({
+    active: testState === 'active',
+    onViolation: (kind, message) => logAntiCheatEvent(kind, message, 'high')
+  });
+  const { stream, cameraOn, micOn, permissionError, clearPermissionError } = proctoring;
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream, testState]);
 
   // anti-cheat event listeners setup when test is ACTIVE
   useEffect(() => {
@@ -154,17 +208,32 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [testState, questions, answers]);
+  }, [testState]);
 
   // Start Assessment Preparation
   const startPreparation = (category: SkillCategory) => {
+    clearPermissionError();
     setSelectedCategory(category);
-    setTestState('briefing');
+    categoryRef.current = category;
+    setAntiCheatLogs([]);
+    logsRef.current = [];
+    setWarningCount(0);
+    strikesRef.current = 0;
+    enterState('briefing');
   };
 
   // Launch Active Assessment
   const launchAssessment = async () => {
-    if (!selectedCategory) return;
+    if (!selectedCategory || launching) return;
+
+    setLaunching(true);
+
+    // Camera + microphone must be live before the session can start.
+    const granted = await proctoring.start();
+    if (!granted) {
+      setLaunching(false);
+      return;
+    }
 
     // Attempt Fullscreen request
     try {
@@ -178,31 +247,42 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
 
     const randomQs = getRandomQuestions(selectedCategory, 20);
     setQuestions(randomQs);
+    questionsRef.current = randomQs;
     setCurrentIndex(0);
     setAnswers({});
+    answersRef.current = {};
     setTimeRemaining(15 * 60); // 15 mins
     setAntiCheatLogs([]);
+    logsRef.current = [];
     setWarningCount(0);
-    setTestState('active');
+    strikesRef.current = 0;
+    categoryRef.current = selectedCategory;
+    setLaunching(false);
+    enterState('active');
   };
 
   // Handle Answer Selection
   const handleSelectAnswer = (optionIndex: number) => {
-    setAnswers(prev => ({
-      ...prev,
-      [currentIndex]: optionIndex
-    }));
+    answersRef.current = { ...answersRef.current, [currentIndex]: optionIndex };
+    setAnswers(answersRef.current);
   };
 
   // Calculate & Finish Assessment
-  const finishAssessment = () => {
-    if (!selectedCategory || questions.length === 0) return;
+  const finishAssessment = (opts: { terminated?: boolean; reason?: string } = {}) => {
+    const category = categoryRef.current;
+    const activeQuestions = questionsRef.current;
+    const finalAnswers = answersRef.current;
+
+    if (!category || activeQuestions.length === 0) return;
+    if (testStateRef.current === 'completed') return;
+
+    const terminated = opts.terminated === true;
 
     let correctCount = 0;
     const topicBreakdown: Record<string, { correct: number; total: number }> = {};
 
-    questions.forEach((q, idx) => {
-      const selected = answers[idx];
+    activeQuestions.forEach((q, idx) => {
+      const selected = finalAnswers[idx];
       const isCorrect = selected === q.correctAnswer;
       if (isCorrect) correctCount++;
 
@@ -214,11 +294,11 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
       if (isCorrect) topicBreakdown[topic].correct++;
     });
 
-    const scorePercent = Math.round((correctCount / questions.length) * 100);
+    const scorePercent = Math.round((correctCount / activeQuestions.length) * 100);
 
-    // Badge Logic
+    // Badge Logic — a terminated session can never earn better than Red
     let badgeLevel: BadgeLevel = 'Red';
-    if (scorePercent >= 80) {
+    if (!terminated && scorePercent >= 80) {
       badgeLevel = 'Green';
       // Trigger Confetti!
       try {
@@ -230,27 +310,49 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
       } catch (e) {
         console.log(e);
       }
-    } else if (scorePercent >= 70) {
+    } else if (!terminated && scorePercent >= 70) {
       badgeLevel = 'Yellow';
+    }
+
+    let finalLogs = logsRef.current;
+    if (terminated) {
+      finalLogs = [
+        {
+          id: `acl-${Date.now()}-term`,
+          timestamp: new Date().toISOString(),
+          event: 'PROCTORING_TERMINATED',
+          message: opts.reason || `Session terminated after ${MAX_VIOLATIONS} proctoring violations.`,
+          severity: 'high'
+        },
+        ...finalLogs
+      ];
+      logsRef.current = finalLogs;
+      setAntiCheatLogs(finalLogs);
     }
 
     const result: TestResult = {
       id: `res-${Date.now()}`,
       userId: currentUser.id,
-      skillName: selectedCategory.split(' ')[0], // e.g. React.js
-      category: selectedCategory,
+      skillName: category.split(' ')[0], // e.g. React.js
+      category,
       scorePercent,
-      totalQuestions: questions.length,
+      totalQuestions: activeQuestions.length,
       correctCount,
       badgeLevel,
-      warningCount,
+      warningCount: strikesRef.current,
+      terminated,
+      terminationReason: terminated ? (opts.reason || 'Proctoring violation limit reached.') : undefined,
       completedAt: new Date().toISOString(),
       topicBreakdown,
-      antiCheatLogs
+      antiCheatLogs: finalLogs
     };
 
     setTestResult(result);
-    setTestState('completed');
+    enterState('completed');
+    setLatestWarning(null);
+
+    // Release camera + microphone as soon as the session ends
+    proctoring.stop();
 
     // Exit fullscreen if active
     if (document.fullscreenElement) {
@@ -320,7 +422,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
 
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white leading-tight">
                 Verify Your Technical Skills.<br/>
-                <span className="gradient-text">Earn Badges. Stand Out to Teammates.</span>
+                <span className="text-gradient">Earn Badges. Stand Out to Teammates.</span>
               </h1>
 
               <p className="text-slate-200 text-sm sm:text-base leading-relaxed">
@@ -344,6 +446,22 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
                   <span className="font-bold text-rose-300">Red Badge: &lt;70%</span>
                   <span className="text-slate-300">(Improvement Needed)</span>
                 </div>
+              </div>
+
+              {/* Proctoring Requirements */}
+              <div className="pt-1 flex flex-wrap gap-2 text-[11px]">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                  <Video size={13} className="text-purple-300" />
+                  Camera + Mic mandatory
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                  <Eye size={13} className="text-cyan-300" />
+                  Monitored live — never recorded
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                  <ShieldAlert size={13} className="text-amber-300" />
+                  3 strikes = auto-submit + Red cap
+                </span>
               </div>
             </div>
           </div>
@@ -448,28 +566,49 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
                 Anti-Cheat & Security Rules (Proctored Session)
               </h4>
               <ul className="list-disc list-inside space-y-1.5 text-rose-800 dark:text-rose-300">
-                <li><strong>Tab-Switch & Blur Detection:</strong> Leaving this window or switching browser tabs logs a violation.</li>
-                <li><strong>Fullscreen Enforcement:</strong> Assessment initiates in Fullscreen mode. Exiting creates a security log.</li>
-                <li><strong>Clipboard Interception:</strong> Copying question text or pasting outside code is strictly blocked.</li>
-                <li><strong>Badge Impact:</strong> Violations are appended to your verification record for teammates to inspect.</li>
+                <li><strong>Three-Strike Policy:</strong> Switching tabs, exiting fullscreen, turning the camera off or muting the mic each cost one strike.</li>
+                <li><strong>On the 3rd strike</strong> your test is auto-submitted with the answers you have given, flagged <strong>TERMINATED — Proctoring Violation</strong>, and your badge is capped at Red.</li>
+                <li><strong>Clipboard Interception:</strong> Copying question text or pasting is blocked and logged.</li>
+                <li><strong>Public Audit Trail:</strong> Every flag is attached to your verification record for teammates to inspect.</li>
+              </ul>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 space-y-3 border border-indigo-200/60 dark:border-indigo-900/40">
+              <h4 className="font-bold text-indigo-950 dark:text-indigo-100 text-sm flex items-center gap-2">
+                <Video size={16} className="text-indigo-600 dark:text-indigo-400" />
+                Camera & Microphone Monitoring
+              </h4>
+              <ul className="list-disc list-inside space-y-1.5 text-indigo-900/80 dark:text-indigo-300">
+                <li>Both camera and microphone access are <strong>mandatory</strong> — the assessment cannot start without them.</li>
+                <li>A small live self-view tile stays on screen so you can confirm your feed is running.</li>
+                <li><strong>Privacy:</strong> the feed is monitored live in your browser only. Nothing is recorded, stored, or uploaded.</li>
               </ul>
             </div>
           </div>
 
+          {permissionError && (
+            <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/40 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-start gap-2.5">
+              <Ban size={16} className="shrink-0 mt-0.5 text-rose-500" />
+              <span>{permissionError}</span>
+            </div>
+          )}
+
           <div className="pt-4 flex items-center justify-between gap-4">
             <button
-              onClick={() => setTestState('idle')}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              onClick={() => enterState('idle')}
+              disabled={launching}
+              className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
             >
               Cancel
             </button>
 
             <button
               onClick={launchAssessment}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2"
+              disabled={launching}
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2 disabled:opacity-60 disabled:cursor-wait"
             >
-              <Maximize2 size={14} />
-              <span>Enter Fullscreen & Begin Assessment</span>
+              <Video size={14} />
+              <span>{launching ? 'Waiting for Camera Access…' : 'Allow Camera & Begin Assessment'}</span>
             </button>
           </div>
         </div>
@@ -496,13 +635,25 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
               </div>
             </div>
 
-            {/* Warnings Counter */}
-            <div className="flex items-center gap-4">
+            {/* Strike Counter + Device Status */}
+            <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs">
                 <ShieldAlert size={14} className={warningCount > 0 ? "text-amber-400" : "text-emerald-400"} />
-                <span className="text-slate-300">Security Flags:</span>
-                <span className={`font-bold ${warningCount > 0 ? "text-amber-400" : "text-emerald-400"}`}>
-                  {warningCount}
+                <span className="text-slate-300">Strikes:</span>
+                <span className={`font-bold ${warningCount >= MAX_VIOLATIONS - 1 ? "text-rose-400" : warningCount > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+                  {warningCount} / {MAX_VIOLATIONS}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs">
+                {cameraOn
+                  ? <Video size={13} className="text-emerald-400" />
+                  : <VideoOff size={13} className="text-rose-400" />}
+                {micOn
+                  ? <Mic size={13} className="text-emerald-400" />
+                  : <MicOff size={13} className="text-rose-400" />}
+                <span className={`font-semibold ${cameraOn && micOn ? 'text-slate-300' : 'text-rose-400'}`}>
+                  {cameraOn && micOn ? 'Feed Live' : 'Signal Lost'}
                 </span>
               </div>
 
@@ -516,11 +667,47 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
 
           {/* Warning Banner Toast */}
           {latestWarning && (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/40 rounded-xl text-amber-700 dark:text-amber-300 text-xs font-semibold flex items-center gap-2 animate-bounce">
-              <AlertTriangle size={16} className="text-amber-500 shrink-0" />
-              <span>{latestWarning}</span>
+            <div className={`p-3 rounded-xl border text-xs font-semibold flex items-center gap-2 animate-bounce-short ${
+              warningCount >= MAX_VIOLATIONS - 1
+                ? 'bg-rose-500/10 border-rose-500/50 text-rose-300'
+                : 'bg-amber-500/10 border-amber-500/40 text-amber-300'
+            }`}>
+              <AlertTriangle size={16} className="shrink-0" />
+              <span className="flex-1">{latestWarning}</span>
+              {warningCount > 0 && (
+                <span className="shrink-0 px-2 py-0.5 rounded-md bg-slate-950/70 border border-white/10">
+                  Strike {warningCount} / {MAX_VIOLATIONS}
+                </span>
+              )}
             </div>
           )}
+
+          {/* Live Self-View — monitored in-browser only, never recorded or uploaded */}
+          <div className="fixed bottom-4 right-4 z-50 w-40 sm:w-48 rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-2xl shadow-black/60">
+            <div className="relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full aspect-[4/3] object-cover bg-slate-950 -scale-x-100"
+              />
+              <span className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/60 backdrop-blur text-[10px] font-bold uppercase tracking-wider text-white">
+                <span className={`w-1.5 h-1.5 rounded-full ${cameraOn && micOn ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
+                Live Proctor
+              </span>
+            </div>
+            <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900 border-t border-slate-800 text-[10px] font-semibold text-slate-400">
+              <span className="flex items-center gap-1">
+                {cameraOn ? <Video size={11} className="text-emerald-400" /> : <VideoOff size={11} className="text-rose-400" />}
+                Cam
+              </span>
+              <span className="flex items-center gap-1">
+                {micOn ? <Mic size={11} className="text-emerald-400" /> : <MicOff size={11} className="text-rose-400" />}
+                Mic
+              </span>
+            </div>
+          </div>
 
           {/* Main Question Card */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
@@ -624,17 +811,34 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-xl text-center space-y-6 relative overflow-hidden">
             
             <div className="inline-flex p-4 rounded-full bg-slate-100 dark:bg-slate-800 text-4xl shadow-inner mb-2">
-              {testResult.badgeLevel === 'Green' ? '🏆' : testResult.badgeLevel === 'Yellow' ? '🎖️' : '🎯'}
+              {testResult.terminated ? '🚫' : testResult.badgeLevel === 'Green' ? '🏆' : testResult.badgeLevel === 'Yellow' ? '🎖️' : '🎯'}
             </div>
 
             <div className="space-y-2">
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                Assessment Completed!
+                {testResult.terminated ? 'Assessment Terminated' : 'Assessment Completed!'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Official proctored evaluation result for <strong className="text-slate-800 dark:text-slate-200">{testResult.category}</strong>
               </p>
             </div>
+
+            {testResult.terminated && (
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-left space-y-2">
+                <h4 className="text-sm font-bold text-rose-700 dark:text-rose-300 flex items-center gap-2">
+                  <Ban size={16} className="shrink-0" />
+                  TERMINATED — Proctoring Violation
+                </h4>
+                <p className="text-xs text-rose-700/90 dark:text-rose-300/90 leading-relaxed">
+                  {testResult.terminationReason}
+                </p>
+                <p className="text-xs text-rose-700/80 dark:text-rose-300/80 leading-relaxed">
+                  The questions you answered were scored, but this badge is capped at <strong>Red</strong> and the
+                  termination is permanently visible on your verification record. Retake the assessment with your
+                  camera and microphone on to earn a higher badge.
+                </p>
+              </div>
+            )}
 
             {/* Score & Badge Display */}
             <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 max-w-md mx-auto space-y-4">
@@ -654,7 +858,8 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                 {testResult.badgeLevel === 'Green' && 'Congratulations! You achieved an Advanced rating (80%+). A Green Badge signifies verified mastery of this technical skill.'}
                 {testResult.badgeLevel === 'Yellow' && 'Good effort! You achieved an Intermediate rating (70-79%). You possess verified competent understanding of core concepts.'}
-                {testResult.badgeLevel === 'Red' && 'Further study recommended (<70%). You can retake this assessment anytime after reviewing key sub-topics.'}
+                {testResult.badgeLevel === 'Red' && !testResult.terminated && 'Further study recommended (<70%). You can retake this assessment anytime after reviewing key sub-topics.'}
+                {testResult.badgeLevel === 'Red' && testResult.terminated && 'Badge capped at Red due to a proctoring termination. Retake the assessment cleanly to be scored on merit.'}
               </p>
             </div>
 
@@ -684,18 +889,42 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
             <div className="p-4 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 text-left space-y-2 text-xs">
               <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200">
                 <span className="flex items-center gap-1.5">
-                  <ShieldAlert size={15} className="text-indigo-600" />
+                  <ShieldAlert size={15} className={testResult.terminated ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-600'} />
                   Anti-Cheat Security Audit
                 </span>
-                <span className={`px-2 py-0.5 rounded-md ${testResult.warningCount === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                  {testResult.warningCount} Flags Recorded
+                <span className={`px-2 py-0.5 rounded-md ${
+                  testResult.terminated
+                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                    : testResult.warningCount === 0
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
+                }`}>
+                  {testResult.warningCount} / {MAX_VIOLATIONS} Strikes
                 </span>
               </div>
               <p className="text-slate-500 dark:text-slate-400">
-                {testResult.warningCount === 0 
-                  ? 'Verification clean. No tab switches or focus loss recorded during your 20-MCQ session.' 
-                  : `${testResult.warningCount} security event(s) captured during assessment. Audit log attached to profile.`}
+                {testResult.terminated
+                  ? 'Strike limit reached — the session was auto-submitted and flagged as terminated. Audit log attached to your profile.'
+                  : testResult.warningCount === 0 
+                    ? 'Verification clean. No tab switches, fullscreen exits or camera/mic dropouts recorded during your 20-MCQ session.' 
+                    : `${testResult.warningCount} proctoring strike(s) captured during assessment. Audit log attached to profile.`}
               </p>
+
+              {testResult.antiCheatLogs.length > 0 && (
+                <ul className="pt-2 mt-1 border-t border-slate-200/70 dark:border-slate-700/70 space-y-1.5">
+                  {testResult.antiCheatLogs.slice(0, 5).map(log => (
+                    <li key={log.id} className="flex items-start gap-2 text-[11px] text-slate-600 dark:text-slate-300">
+                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                        log.severity === 'high' ? 'bg-rose-500' : log.severity === 'medium' ? 'bg-amber-500' : 'bg-slate-400'
+                      }`}></span>
+                      <span className="flex-1">{log.message}</span>
+                      <span className="font-mono text-slate-400 shrink-0">
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             {/* Actions */}
@@ -709,11 +938,11 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
               </button>
 
               <button
-                onClick={() => setTestState('idle')}
+                onClick={() => (testResult.terminated ? startPreparation(testResult.category) : enterState('idle'))}
                 className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center gap-2"
               >
                 <RotateCcw size={15} />
-                <span>Take Another Assessment</span>
+                <span>{testResult.terminated ? 'Retake This Assessment' : 'Take Another Assessment'}</span>
               </button>
             </div>
 

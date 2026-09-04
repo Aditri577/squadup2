@@ -2,13 +2,13 @@
   "users": [
     {
       "id": "user-aditi",
-      "name": "Aditi Saxena",
+      "name": "Aditri Saxena",
       "email": "aditi.saxena@example.edu",
-      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250",
+      "avatar": "duo-owl",
       "role": "Full Stack Developer",
-      "college": "IIT Delhi",
+      "college": "IMSEC GHAZIABAD",
       "bio": "Passionate about building scalable web apps and AI-powered team tools. 3x Hackathon winner.",
-      "location": "New Delhi, India",
+      "location": "GHAZIABAD",
       "github": "https://github.com/aditisaxena",
       "linkedin": "https://linkedin.com/in/aditisaxena",
       "portfolio": "https://aditisaxena.dev",
@@ -106,7 +106,8 @@
         }
       ],
       "xpPoints": 450,
-      "level": 3
+      "level": 3,
+      "passwordHash": "$2b$10$gopeqy1tq8F0WzQWECOdeuZkSGk3mteI4o.R2zyf3dVLjZ61lx2UC"
     },
     {
       "id": "user-rohan",
@@ -184,7 +185,8 @@
         }
       ],
       "xpPoints": 380,
-      "level": 2
+      "level": 2,
+      "passwordHash": "$2b$10$gopeqy1tq8F0WzQWECOdeuZkSGk3mteI4o.R2zyf3dVLjZ61lx2UC"
     },
     {
       "id": "user-priya",
@@ -234,7 +236,8 @@
       ],
       "testResults": [],
       "xpPoints": 150,
-      "level": 1
+      "level": 1,
+      "passwordHash": "$2b$10$gopeqy1tq8F0WzQWECOdeuZkSGk3mteI4o.R2zyf3dVLjZ61lx2UC"
     },
     {
       "id": "user-vikram",
@@ -291,7 +294,8 @@
       ],
       "testResults": [],
       "xpPoints": 150,
-      "level": 1
+      "level": 1,
+      "passwordHash": "$2b$10$gopeqy1tq8F0WzQWECOdeuZkSGk3mteI4o.R2zyf3dVLjZ61lx2UC"
     },
     {
       "id": "user-ananya",
@@ -329,7 +333,8 @@
       ],
       "testResults": [],
       "xpPoints": 150,
-      "level": 1
+      "level": 1,
+      "passwordHash": "$2b$10$gopeqy1tq8F0WzQWECOdeuZkSGk3mteI4o.R2zyf3dVLjZ61lx2UC"
     },
     {
       "id": "user-kabir",
@@ -375,7 +380,158 @@
       ],
       "testResults": [],
       "xpPoints": 150,
-      "level": 1
+      "level": 1,
+      "passwordHash": "$2b$10$gopeqy1tq8F0WzQWECOdeuZkSGk3mteI4o.R2zyf3dVLjZ61lx2UC"
+    },
+    {
+      "id": "usr-1788468749934",
+      "name": "Aditri Saxena",
+      "email": "aditrisaxena9a@gmail.com",
+      "avatar": "duo-owl",
+      "role": "Full Stack Developer",
+      "college": "Tech University",
+      "location": "India",
+      "bio": "Verified developer with Google authenticated account.",
+      "skills": [],
+      "testResults": [],
+      "joinedAt": "2026-09-03",
+      "preferredDomains": [
+        "AI/GenAI"
+      ],
+      "lookingForTeam": true,
+      "xpPoints": 100,
+      "level": 1,
+      "passwordHash": "dummy"
+    },
+    {
+      "id": "usr-1788507559448",
+      "name": "aditri",
+      "email": "aditrsaxena77@gmail.com",
+      "avatar": "space-astronaut",
+      "role": "Full Stack Developer",
+      "college": "Tech University",
+      "location": "India",
+      "bio": "Verified developer with Google authenticated account.",
+      "skills": [
+        {
+          "id": "sk-1788507695742",
+          "name": "Frontend",
+          "category": "Frontend (React/JS)",
+          "selfRating": 3,
+          "badgeLevel": "Red",
+          "scorePercent": 25,
+          "verifiedAt": "2026-09-04"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "res-1788507687760",
+          "userId": "usr-1788507559448",
+          "skillName": "Frontend",
+          "category": "Frontend (React/JS)",
+          "scorePercent": 25,
+          "totalQuestions": 20,
+          "correctCount": 5,
+          "badgeLevel": "Red",
+          "warningCount": 0,
+          "terminated": false,
+          "completedAt": "2026-09-04T07:41:27.760Z",
+          "topicBreakdown": {
+            "Custom Hooks": {
+              "correct": 0,
+              "total": 1
+            },
+            "Error Boundaries": {
+              "correct": 0,
+              "total": 1
+            },
+            "Tailwind & Flexbox": {
+              "correct": 0,
+              "total": 1
+            },
+            "Closures": {
+              "correct": 1,
+              "total": 1
+            },
+            "Event Loop": {
+              "correct": 1,
+              "total": 1
+            },
+            "Zustand / Redux": {
+              "correct": 0,
+              "total": 1
+            },
+            "Keys & Lists": {
+              "correct": 0,
+              "total": 1
+            },
+            "XSS Prevention": {
+              "correct": 0,
+              "total": 1
+            },
+            "Virtual DOM": {
+              "correct": 0,
+              "total": 1
+            },
+            "Context API": {
+              "correct": 0,
+              "total": 1
+            },
+            "Utility Types": {
+              "correct": 0,
+              "total": 1
+            },
+            "Hooks & State": {
+              "correct": 1,
+              "total": 1
+            },
+            "Promises & Async": {
+              "correct": 0,
+              "total": 1
+            },
+            "DOM Operations": {
+              "correct": 0,
+              "total": 1
+            },
+            "Performance": {
+              "correct": 0,
+              "total": 1
+            },
+            "Hooks & Lifecycle": {
+              "correct": 1,
+              "total": 1
+            },
+            "Concurrent React": {
+              "correct": 0,
+              "total": 1
+            },
+            "Generics": {
+              "correct": 0,
+              "total": 1
+            },
+            "Ref & DOM": {
+              "correct": 1,
+              "total": 1
+            },
+            "Code Splitting": {
+              "correct": 0,
+              "total": 1
+            }
+          },
+          "antiCheatLogs": []
+        }
+      ],
+      "joinedAt": "2026-09-04",
+      "preferredDomains": [
+        "AI/GenAI"
+      ],
+      "lookingForTeam": true,
+      "xpPoints": 100,
+      "level": 1,
+      "passwordHash": "$2b$10$ZMZrROdKJHtbJc398z3GWO8Oz7H6s4ZPEYxgIaf3YRSmtj4zjlEKC",
+      "github": "",
+      "linkedin": "",
+      "portfolio": ""
     }
   ],
   "teams": [

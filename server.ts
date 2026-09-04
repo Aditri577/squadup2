@@ -4,15 +4,72 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import mysql from "mysql2/promise";
 import { INITIAL_USERS, INITIAL_TEAMS, INITIAL_REQUESTS } from "./src/data/mockData";
 
 dotenv.config();
 
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { id: string };
+    }
+  }
+}
+
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
+
+const DEMO_MODE = process.env.DEMO_MODE === "true";
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "squadup123";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+const BCRYPT_ROUNDS = 10;
+
+// A missing secret must never silently fall back to a shared default in production.
+const JWT_SECRET = process.env.JWT_SECRET || "squadup-dev-only-insecure-secret";
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET must be set when NODE_ENV=production");
+  }
+  console.warn("Auth: JWT_SECRET not set, using an insecure development secret.");
+}
+
+function signToken(userId: string): string {
+  return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
+}
+
+function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (!token) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { sub?: string };
+    if (!payload.sub) {
+      return res.status(401).json({ error: "Malformed session token" });
+    }
+    req.user = { id: payload.sub };
+    next();
+  } catch {
+    return res.status(401).json({ error: "Session expired, please sign in again" });
+  }
+}
+
+// passwordHash must never leave the server, including through /api/state.
+function sanitizeUser(user: any) {
+  if (!user) return user;
+  const { passwordHash, ...safe } = user;
+  return safe;
+}
+
+function sanitizeUsers(users: any[]) {
+  return users.map(sanitizeUser);
+}
 
 // Initialize Gemini AI client on the server side
 const ai = new GoogleGenAI({
@@ -103,9 +160,17 @@ async function initDb() {
           testResults JSON,
           experience VARCHAR(255),
           availability VARCHAR(255),
-          hackathons JSON
+          hackathons JSON,
+          passwordHash VARCHAR(255)
         )
       `);
+
+      // CREATE TABLE IF NOT EXISTS will not add columns to a pre-existing table.
+      const [hashColumn]: any = await pool.query("SHOW COLUMNS FROM users LIKE 'passwordHash'");
+      if (hashColumn.length === 0) {
+        await pool.query("ALTER TABLE users ADD COLUMN passwordHash VARCHAR(255) NULL");
+        console.log("Database: Added passwordHash column to users table.");
+      }
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS teams (
@@ -155,12 +220,13 @@ async function initDb() {
       `);
 
       // Seed data if empty
+      const demoHash = await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS);
       const [userRows]: any = await pool.query("SELECT COUNT(*) as count FROM users");
       if (userRows[0].count === 0) {
         for (const u of defaultUsers) {
           await pool.query(
-            "INSERT INTO users (id, name, email, avatar, role, college, bio, location, github, linkedin, portfolio, preferredDomains, lookingForTeam, teamId, joinedAt, xpPoints, level, skills, testResults, experience, availability, hackathons) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [u.id, u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.joinedAt, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || [])]
+            "INSERT INTO users (id, name, email, avatar, role, college, bio, location, github, linkedin, portfolio, preferredDomains, lookingForTeam, teamId, joinedAt, xpPoints, level, skills, testResults, experience, availability, hackathons, passwordHash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [u.id, u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.joinedAt, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []), demoHash]
           );
         }
         for (const t of INITIAL_TEAMS) {
@@ -184,6 +250,15 @@ async function initDb() {
         console.log("Database: MySQL seeded with initial mock data.");
       }
 
+      // Rows created before auth existed have no credentials yet.
+      const [missingHash] = await pool.query(
+        "UPDATE users SET passwordHash = ? WHERE passwordHash IS NULL",
+        [demoHash]
+      );
+      if ((missingHash as any).affectedRows > 0) {
+        console.log(`Auth: Set demo password for ${(missingHash as any).affectedRows} pre-existing user(s).`);
+      }
+
       useMysql = true;
     } catch (err) {
       console.warn("Database: MySQL initialization failed, falling back to JSON local file database.", err);
@@ -195,16 +270,29 @@ async function initDb() {
   }
 
   if (!useMysql) {
+    const demoHash = await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS);
+
     // Initialize file-based DB
     if (!fs.existsSync(DB_FILE)) {
       const initialDbData = {
-        users: defaultUsers,
+        users: defaultUsers.map(u => ({ ...u, passwordHash: demoHash })),
         teams: INITIAL_TEAMS,
         requests: INITIAL_REQUESTS,
         feedback: defaultFeedback
       };
       fs.writeFileSync(DB_FILE, JSON.stringify(initialDbData, null, 2), "utf8");
       console.log("Database: Created local db.json file with seeded mock data.");
+    } else {
+      // Records written before auth existed have no credentials yet.
+      const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
+      const users = data.users || [];
+      const missing = users.filter((u: any) => !u.passwordHash);
+      if (missing.length > 0) {
+        for (const u of missing) u.passwordHash = demoHash;
+        data.users = users;
+        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
+        console.log(`Auth: Set demo password for ${missing.length} pre-existing user(s) in db.json.`);
+      }
     }
   }
 }
@@ -230,11 +318,12 @@ async function getUsers(): Promise<any[]> {
 async function saveUsers(users: any[]): Promise<void> {
   if (useMysql && pool) {
     for (const u of users) {
+      const columns = [u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []), u.passwordHash || null];
       await pool.query(
-        "INSERT INTO users (id, name, email, avatar, role, college, bio, location, github, linkedin, portfolio, preferredDomains, lookingForTeam, teamId, joinedAt, xpPoints, level, skills, testResults, experience, availability, hackathons) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=?, email=?, avatar=?, role=?, college=?, bio=?, location=?, github=?, linkedin=?, portfolio=?, preferredDomains=?, lookingForTeam=?, teamId=?, xpPoints=?, level=?, skills=?, testResults=?, experience=?, availability=?, hackathons=?",
+        "INSERT INTO users (id, name, email, avatar, role, college, bio, location, github, linkedin, portfolio, preferredDomains, lookingForTeam, teamId, joinedAt, xpPoints, level, skills, testResults, experience, availability, hackathons, passwordHash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=?, email=?, avatar=?, role=?, college=?, bio=?, location=?, github=?, linkedin=?, portfolio=?, preferredDomains=?, lookingForTeam=?, teamId=?, xpPoints=?, level=?, skills=?, testResults=?, experience=?, availability=?, hackathons=?, passwordHash=?",
         [
-          u.id, u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.joinedAt, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []),
-          u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || [])
+          u.id, u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.joinedAt, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []), u.passwordHash || null,
+          ...columns
         ]
       );
     }
@@ -343,86 +432,311 @@ async function saveFeedback(feedbacks: any[]): Promise<void> {
   }
 }
 
-// Call database initializer
-initDb().catch(e => console.error("Database initialization failed:", e));
-
 // API Routes
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", app: "SquadUP" });
 });
 
+// Endpoint: Public client configuration
+app.get("/api/config", (_req, res) => {
+  res.json({ demoMode: DEMO_MODE });
+});
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateRegistration(body: any): string | null {
+  if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
+    return "Name is required";
+  }
+  if (!body.email || typeof body.email !== "string" || !EMAIL_PATTERN.test(body.email.trim())) {
+    return "A valid email address is required";
+  }
+  if (!body.password || typeof body.password !== "string" || body.password.length < 6) {
+    return "Password must be at least 6 characters";
+  }
+  return null;
+}
+
+// Endpoint: Register a new account
+app.post("/api/auth/register", async (req, res) => {
+  try {
+    const validationError = validateRegistration(req.body);
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const { name, email, password, role, college, avatar } = req.body;
+    const users = await getUsers();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (users.some(u => (u.email || "").toLowerCase() === normalizedEmail)) {
+      return res.status(409).json({ error: "An account with this email already exists" });
+    }
+
+    const newUser = {
+      id: `usr-${Date.now()}`,
+      name: name.trim(),
+      email: email.trim(),
+      avatar: avatar || "duo-owl",
+      role: role || "Full Stack Developer",
+      college: (college || "").trim() || "Tech Institute",
+      location: "India",
+      bio: `Verified ${role || "Full Stack Developer"} looking for hackathon teammates.`,
+      skills: [],
+      testResults: [],
+      joinedAt: new Date().toISOString().split("T")[0],
+      preferredDomains: ["AI/GenAI"],
+      lookingForTeam: true,
+      xpPoints: 100,
+      level: 1,
+      passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS)
+    };
+
+    users.push(newUser);
+    await saveUsers(users);
+
+    res.json({ success: true, token: signToken(newUser.id), user: sanitizeUser(newUser) });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to create account", details: error.message });
+  }
+});
+
+// Endpoint: Sign in with email and password
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const users = await getUsers();
+    const user = users.find(u => (u.email || "").toLowerCase() === String(email).trim().toLowerCase());
+
+    if (!user) {
+      return res.status(401).json({ 
+        error: "No account found with this email. Please switch to 'Create Account' to sign up or use 'Continue with Google'." 
+      });
+    }
+
+    if (!user.passwordHash) {
+      return res.status(401).json({ error: "Invalid credentials. Please try again or use Google sign-in." });
+    }
+
+    const passwordMatches = await bcrypt.compare(String(password), user.passwordHash);
+    if (!passwordMatches) {
+      return res.status(401).json({ error: "Incorrect password. Please verify and try again." });
+    }
+
+    res.json({ success: true, token: signToken(user.id), user: sanitizeUser(user) });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to sign in", details: error.message });
+  }
+});
+
+// Endpoint: Resolve the session token to the current user
+app.get("/api/auth/me", requireAuth, async (req, res) => {
+  try {
+    const users = await getUsers();
+    const user = users.find(u => u.id === req.user!.id);
+    if (!user) {
+      return res.status(404).json({ error: "Account no longer exists" });
+    }
+    res.json({ user: sanitizeUser(user) });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to load session", details: error.message });
+  }
+});
+
+// Endpoint: Google Authentication with Real Email
+app.post("/api/auth/google", async (req, res) => {
+  try {
+    const { email, name, avatar } = req.body || {};
+    if (!email || !EMAIL_PATTERN.test(String(email).trim())) {
+      return res.status(400).json({ error: "A valid Google email address is required" });
+    }
+
+    const users = await getUsers();
+    const normalizedEmail = String(email).trim().toLowerCase();
+    let user = users.find(u => (u.email || "").toLowerCase() === normalizedEmail);
+
+    if (!user) {
+      const derivedName = name && typeof name === "string" && name.trim()
+        ? name.trim()
+        : normalizedEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+
+      user = {
+        id: `usr-${Date.now()}`,
+        name: derivedName,
+        email: String(email).trim(),
+        avatar: avatar || "duo-owl",
+        role: "Full Stack Developer",
+        college: "Tech University",
+        location: "India",
+        bio: `Verified developer with Google authenticated account.`,
+        skills: [],
+        testResults: [],
+        joinedAt: new Date().toISOString().split("T")[0],
+        preferredDomains: ["AI/GenAI"],
+        lookingForTeam: true,
+        xpPoints: 100,
+        level: 1,
+        passwordHash: await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS)
+      };
+      users.push(user);
+      await saveUsers(users);
+    }
+
+    res.json({ success: true, token: signToken(user.id), user: sanitizeUser(user) });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to authenticate with Google", details: error.message });
+  }
+});
+
+// Endpoint: Demo-only Google-style sign in (for backward compatibility)
+app.post("/api/auth/demo-google", async (req, res) => {
+  try {
+    const { email, name, avatar } = req.body || {};
+    if (!email || !EMAIL_PATTERN.test(String(email).trim())) {
+      return res.status(400).json({ error: "A valid email address is required" });
+    }
+
+    const users = await getUsers();
+    const normalizedEmail = String(email).trim().toLowerCase();
+    let user = users.find(u => (u.email || "").toLowerCase() === normalizedEmail);
+
+    if (!user) {
+      const derivedName = name && typeof name === "string" && name.trim()
+        ? name.trim()
+        : normalizedEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+
+      user = {
+        id: `usr-${Date.now()}`,
+        name: derivedName,
+        email: String(email).trim(),
+        avatar: avatar || "duo-owl",
+        role: "Full Stack Developer",
+        college: "Google Auth User",
+        location: "India",
+        bio: "Signed in via Google authentication.",
+        skills: [],
+        testResults: [],
+        joinedAt: new Date().toISOString().split("T")[0],
+        preferredDomains: ["AI/GenAI"],
+        lookingForTeam: true,
+        xpPoints: 100,
+        level: 1,
+        passwordHash: await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS)
+      };
+      users.push(user);
+      await saveUsers(users);
+    }
+
+    res.json({ success: true, token: signToken(user.id), user: sanitizeUser(user) });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to sign in", details: error.message });
+  }
+});
+
+// Endpoint: Demo-only identity switch, mints a real token for the target account
+app.post("/api/auth/demo-switch", async (req, res) => {
+  if (!DEMO_MODE) {
+    return res.status(404).json({ error: "Not found" });
+  }
+  try {
+    const { userId } = req.body || {};
+    const users = await getUsers();
+    const user = users.find(u => u.id === userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ success: true, token: signToken(user.id), user: sanitizeUser(user) });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to switch identity", details: error.message });
+  }
+});
+
 // Endpoint: Fetch complete state
-app.get("/api/state", async (_req, res) => {
+app.get("/api/state", requireAuth, async (_req, res) => {
   try {
     const users = await getUsers();
     const teams = await getTeams();
     const requests = await getRequests();
     const feedback = await getFeedback();
-    res.json({ users, teams, requests, feedback });
+    res.json({ users: sanitizeUsers(users), teams, requests, feedback });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to retrieve state", details: error.message });
   }
 });
 
-// Endpoint: Create a new user (Signup / Custom Google auth)
-app.post("/api/users", async (req, res) => {
-  try {
-    const newUser = req.body;
-    const users = await getUsers();
-    newUser.xpPoints = newUser.xpPoints || 100;
-    newUser.level = getXpLevel(newUser.xpPoints);
-    users.push(newUser);
-    await saveUsers(users);
-    res.json({ success: true, user: newUser });
-  } catch (error: any) {
-    res.status(500).json({ error: "Failed to create user", details: error.message });
-  }
-});
+// Fields a client must never set directly through the profile update path.
+const IMMUTABLE_USER_FIELDS = ["id", "email", "passwordHash", "level", "teamId", "xpPoints"];
 
-// Endpoint: Update profile or user attributes
-app.put("/api/users/:id", async (req, res) => {
+// Endpoint: Update the signed-in user's own profile
+app.put("/api/users/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const updatedFields = req.body;
+    if (id !== req.user!.id) {
+      return res.status(403).json({ error: "You can only edit your own profile" });
+    }
+
+    const updatedFields: any = { ...req.body };
+    for (const field of IMMUTABLE_USER_FIELDS) {
+      delete updatedFields[field];
+    }
+
     let users = await getUsers();
-    let userFound = false;
-
-    users = users.map(u => {
-      if (u.id === id) {
-        userFound = true;
-        const finalXp = updatedFields.xpPoints !== undefined ? updatedFields.xpPoints : (u.xpPoints || 100);
-        return {
-          ...u,
-          ...updatedFields,
-          xpPoints: finalXp,
-          level: getXpLevel(finalXp)
-        };
-      }
-      return u;
-    });
-
-    if (!userFound) {
+    const target = users.find(u => u.id === id);
+    if (!target) {
       return res.status(404).json({ error: "User not found" });
     }
 
+    users = users.map(u => u.id === id ? { ...u, ...updatedFields } : u);
     await saveUsers(users);
+
     const updated = users.find(u => u.id === id);
-    res.json({ success: true, user: updated });
+    res.json({ success: true, user: sanitizeUser(updated) });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to update user", details: error.message });
   }
 });
 
 // Endpoint: Create team
-app.post("/api/teams", async (req, res) => {
+app.post("/api/teams", requireAuth, async (req, res) => {
   try {
-    const newTeam = req.body;
+    const { name, hackathonId, hackathonName, description, lookingForRoles, projectIdea } = req.body;
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: "Team name is required" });
+    }
+
+    let users = await getUsers();
+    const leader = users.find(u => u.id === req.user!.id);
+    if (!leader) {
+      return res.status(404).json({ error: "Account no longer exists" });
+    }
+
+    const newTeam = {
+      id: `team-${Date.now()}`,
+      name: String(name).trim(),
+      hackathonId: hackathonId || "",
+      hackathonName: hackathonName || "",
+      description: description || "",
+      leaderId: leader.id,
+      members: [{
+        userId: leader.id,
+        role: leader.role,
+        joinedAt: new Date().toISOString().split("T")[0],
+        isLeader: true
+      }],
+      lookingForRoles: lookingForRoles || [],
+      projectIdea,
+      createdAt: new Date().toISOString().split("T")[0]
+    };
+
     const teams = await getTeams();
     teams.push(newTeam);
     await saveTeams(teams);
 
     // Award +100 XP to leader
-    let users = await getUsers();
     users = users.map(u => {
       if (u.id === newTeam.leaderId) {
         const newXp = (u.xpPoints || 100) + 100;
@@ -444,9 +758,38 @@ app.post("/api/teams", async (req, res) => {
 });
 
 // Endpoint: Send team invite request
-app.post("/api/requests", async (req, res) => {
+app.post("/api/requests", requireAuth, async (req, res) => {
   try {
-    const newRequest = req.body;
+    const { teamId, teamName, hackathonName, receiverId, proposedRole, message } = req.body;
+    if (!teamId || !receiverId) {
+      return res.status(400).json({ error: "teamId and receiverId are required" });
+    }
+    if (receiverId === req.user!.id) {
+      return res.status(400).json({ error: "You cannot invite yourself" });
+    }
+
+    const users = await getUsers();
+    const sender = users.find(u => u.id === req.user!.id);
+    if (!sender) {
+      return res.status(404).json({ error: "Account no longer exists" });
+    }
+
+    const newRequest = {
+      id: `req-${Date.now()}`,
+      teamId,
+      teamName: teamName || "",
+      hackathonName: hackathonName || "",
+      senderId: sender.id,
+      senderName: sender.name,
+      senderAvatar: sender.avatar,
+      senderRole: sender.role,
+      receiverId,
+      proposedRole: proposedRole || sender.role,
+      message: message || "",
+      status: "pending",
+      createdAt: new Date().toISOString()
+    };
+
     const requests = await getRequests();
     requests.push(newRequest);
     await saveRequests(requests);
@@ -457,14 +800,24 @@ app.post("/api/requests", async (req, res) => {
 });
 
 // Endpoint: Accept/reject request
-app.put("/api/requests/:id", async (req, res) => {
+app.put("/api/requests/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body; // 'accepted' | 'rejected'
+    if (status !== "accepted" && status !== "rejected") {
+      return res.status(400).json({ error: "Status must be 'accepted' or 'rejected'" });
+    }
+
     let requests = await getRequests();
     let targetReq = requests.find(r => r.id === id);
     if (!targetReq) {
       return res.status(404).json({ error: "Request not found" });
+    }
+    if (targetReq.receiverId !== req.user!.id) {
+      return res.status(403).json({ error: "Only the invited user can respond to this request" });
+    }
+    if (targetReq.status !== "pending") {
+      return res.status(409).json({ error: `This invitation was already ${targetReq.status}` });
     }
 
     requests = requests.map(r => r.id === id ? { ...r, status } : r);
@@ -517,38 +870,74 @@ app.put("/api/requests/:id", async (req, res) => {
 });
 
 // Endpoint: Submit teammate feedback
-app.post("/api/feedback", async (req, res) => {
+app.post("/api/feedback", requireAuth, async (req, res) => {
   try {
-    const newFeedback = req.body;
-    newFeedback.id = `fb-${Date.now()}`;
-    newFeedback.createdAt = new Date().toISOString();
+    const { receiverId, teamId, rating, comment, tags } = req.body;
+    if (!receiverId || !teamId) {
+      return res.status(400).json({ error: "receiverId and teamId are required" });
+    }
+    if (receiverId === req.user!.id) {
+      return res.status(400).json({ error: "You cannot endorse yourself" });
+    }
+    if (typeof rating !== "number" || rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "Rating must be a number between 1 and 5" });
+    }
+
+    const users = await getUsers();
+    const sender = users.find(u => u.id === req.user!.id);
+    const receiver = users.find(u => u.id === receiverId);
+    if (!sender || !receiver) {
+      return res.status(404).json({ error: "Sender or receiver not found" });
+    }
+
+    const teams = await getTeams();
+    const team = teams.find(t => t.id === teamId);
+    if (!team) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+
+    // Feedback is only meaningful between people who actually shared a squad.
+    const isMember = (userId: string) => team.members.some((m: any) => m.userId === userId);
+    if (!isMember(sender.id) || !isMember(receiverId)) {
+      return res.status(403).json({ error: "Both teammates must belong to this team" });
+    }
 
     const feedbacks = await getFeedback();
+    const alreadyEndorsed = feedbacks.some(f =>
+      f.senderId === sender.id && f.receiverId === receiverId && f.teamId === teamId
+    );
+    if (alreadyEndorsed) {
+      return res.status(409).json({ error: "You have already endorsed this teammate for this squad" });
+    }
+
+    const newFeedback = {
+      id: `fb-${Date.now()}`,
+      senderId: sender.id,
+      senderName: sender.name,
+      receiverId,
+      teamId,
+      rating,
+      comment: comment || "",
+      tags: tags || [],
+      createdAt: new Date().toISOString()
+    };
+
     feedbacks.push(newFeedback);
     await saveFeedback(feedbacks);
 
     // +50 XP for giving feedback, +100 XP for receiving positive feedback
-    let users = await getUsers();
-    users = users.map(u => {
-      if (u.id === newFeedback.senderId) {
+    const updatedUsers = users.map(u => {
+      if (u.id === sender.id) {
         const newXp = (u.xpPoints || 100) + 50;
-        return {
-          ...u,
-          xpPoints: newXp,
-          level: getXpLevel(newXp)
-        };
+        return { ...u, xpPoints: newXp, level: getXpLevel(newXp) };
       }
-      if (u.id === newFeedback.receiverId) {
+      if (u.id === receiverId) {
         const newXp = (u.xpPoints || 100) + 100;
-        return {
-          ...u,
-          xpPoints: newXp,
-          level: getXpLevel(newXp)
-        };
+        return { ...u, xpPoints: newXp, level: getXpLevel(newXp) };
       }
       return u;
     });
-    await saveUsers(users);
+    await saveUsers(updatedUsers);
 
     res.json({ success: true, feedback: newFeedback });
   } catch (error: any) {
@@ -557,7 +946,7 @@ app.post("/api/feedback", async (req, res) => {
 });
 
 // Endpoint: Generate AI Project Ideas based on Team Verified Skills
-app.post("/api/ai/project-ideas", async (req, res) => {
+app.post("/api/ai/project-ideas", requireAuth, async (req, res) => {
   try {
     const { hackathonTitle, hackathonDomain, teamMembers } = req.body;
 
@@ -622,7 +1011,7 @@ Return JSON strictly matching this array format:
 });
 
 // Endpoint: AI Teammate Match Analysis
-app.post("/api/ai/match-analysis", async (req, res) => {
+app.post("/api/ai/match-analysis", requireAuth, async (req, res) => {
   try {
     const { candidate, teamSkillGaps, hackathonTitle } = req.body;
 
@@ -647,6 +1036,9 @@ app.post("/api/ai/match-analysis", async (req, res) => {
 });
 
 async function startServer() {
+  await initDb().catch(e => console.error("Database initialization failed:", e));
+  console.log(`Auth: JWT sessions enabled (expires in ${JWT_EXPIRES_IN}). DEMO_MODE=${DEMO_MODE ? "true" : "false"}`);
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },

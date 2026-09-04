@@ -9,7 +9,7 @@ interface CommandPaletteModalProps {
   users: User[];
   hackathons: Hackathon[];
   onSelectUser: (user: User) => void;
-  onNavigateTab: (tab: 'discovery' | 'assessment' | 'profile' | 'teams' | 'hackathons' | 'leaderboard') => void;
+  onNavigatePath: (path: string) => void;
 }
 
 export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
@@ -18,7 +18,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   users,
   hackathons,
   onSelectUser,
-  onNavigateTab
+  onNavigatePath
 }) => {
   const [query, setQuery] = useState('');
 
@@ -58,11 +58,12 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     : hackathons.slice(0, 2);
 
   const navigationCommands = [
-    { id: 'discovery', label: 'Explore Teammates & Hackers', icon: UserIcon, tab: 'discovery' as const },
-    { id: 'teams', label: 'My Squad Workspace & Kanban', icon: Sparkles, tab: 'teams' as const },
-    { id: 'assessment', label: 'Take Skill Quiz & Earn Badges', icon: Zap, tab: 'assessment' as const },
-    { id: 'hackathons', label: 'Browse Hackathons Directory', icon: Trophy, tab: 'hackathons' as const },
-    { id: 'leaderboard', label: 'Global Leaderboard & XP Ranks', icon: Trophy, tab: 'leaderboard' as const },
+    { id: 'discovery', label: 'Explore Teammates & Hackers', icon: UserIcon, path: '/discover' },
+    { id: 'teams', label: 'My Squad Workspace & Kanban', icon: Sparkles, path: '/teams' },
+    { id: 'assessment', label: 'Take Skill Quiz & Earn Badges', icon: Zap, path: '/assessment' },
+    { id: 'hackathons', label: 'Browse Hackathons Directory', icon: Trophy, path: '/hackathons' },
+    { id: 'leaderboard', label: 'Global Leaderboard & XP Ranks', icon: Trophy, path: '/leaderboard' },
+    { id: 'profile', label: 'My Profile & Verified Skills', icon: UserIcon, path: '/profile' },
   ].filter(c => !query.trim() || c.label.toLowerCase().includes(query.toLowerCase()));
 
   return (
@@ -114,7 +115,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                     <button
                       key={cmd.id}
                       onClick={() => {
-                        onNavigateTab(cmd.tab);
+                        onNavigatePath(cmd.path);
                         onClose();
                       }}
                       className="w-full flex items-center justify-between p-3 rounded-2xl bg-[#1a142e]/40 hover:bg-purple-900/30 border border-transparent hover:border-purple-500/30 text-left transition cursor-pointer group"
@@ -148,7 +149,6 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                     key={user.id}
                     onClick={() => {
                       onSelectUser(user);
-                      onNavigateTab('discovery');
                       onClose();
                     }}
                     className="w-full flex items-center justify-between p-3 rounded-2xl bg-[#1a142e]/30 hover:bg-purple-900/30 border border-transparent hover:border-purple-500/30 text-left transition cursor-pointer group"
@@ -192,7 +192,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                   <button
                     key={h.id}
                     onClick={() => {
-                      onNavigateTab('hackathons');
+                      onNavigatePath('/hackathons');
                       onClose();
                     }}
                     className="w-full flex items-center justify-between p-3 rounded-2xl bg-[#1a142e]/30 hover:bg-purple-900/30 border border-transparent hover:border-purple-500/30 text-left transition cursor-pointer group"

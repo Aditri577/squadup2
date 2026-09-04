@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { User, Team, TeamRequest, UserRole, TeammateFeedback } from './types';
 import { INITIAL_USERS, INITIAL_HACKATHONS, INITIAL_TEAMS, INITIAL_REQUESTS } from './data/mockData';
 import { Header } from './components/Header';
@@ -11,15 +13,29 @@ import { InvitationsModal } from './components/InvitationsModal';
 import { AuthView } from './components/AuthView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
+import { VerificationGate } from './components/VerificationGate';
+import { api, ApiError, getToken, setToken, clearToken, fetchDemoMode } from './utils/api';
+
+type AuthState = 'loading' | 'anonymous' | 'authenticated';
+
+// A single proctored badge of any colour unlocks discovery and team workspaces.
+const hasProctoredBadge = (user: User) =>
+  user.skills.some(s => s.badgeLevel !== 'Unverified') || (user.testResults?.length ?? 0) > 0;
 
 export function App() {
-  // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('squadup_is_authenticated') === 'true';
-  });
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
+  );
+}
 
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<'discovery' | 'assessment' | 'profile' | 'teams' | 'hackathons' | 'leaderboard'>('discovery');
+function AppShell() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [authState, setAuthState] = useState<AuthState>('loading');
+  const [demoMode, setDemoMode] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Application Data State loaded from Backend API
@@ -30,226 +46,185 @@ export function App() {
   const [feedbacks, setFeedbacks] = useState<TeammateFeedback[]>([]);
   const [hackathons] = useState(INITIAL_HACKATHONS);
 
-  const [selectedProfileUser, setSelectedProfileUser] = useState<User | null>(null);
   const [showRequestsModal, setShowRequestsModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Load state from backend on mount
-  const loadState = async () => {
-    try {
-      const res = await fetch('/api/state');
-      const data = await res.json();
-      if (data) {
-        setUsers(data.users || []);
-        setTeams(data.teams || []);
-        setRequests(data.requests || []);
-        setFeedbacks(data.feedback || []);
-        
-        // Sync current user with latest server data
-        const savedCurrent = localStorage.getItem('squadup_current_user');
-        let currentParsed = savedCurrent ? JSON.parse(savedCurrent) : null;
-        if (currentParsed) {
-          const updatedCurrent = (data.users || []).find((u: any) => u.id === currentParsed.id);
-          if (updatedCurrent) {
-            setCurrentUser(updatedCurrent);
-          } else {
-            setCurrentUser((data.users || [])[0] || currentParsed);
-          }
-        } else {
-          setCurrentUser((data.users || [])[0]);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load backend state, falling back to mock defaults", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  React.useEffect(() => {
-    loadState();
+  const loadState = useCallback(async () => {
+    const data = await api<{ users: User[]; teams: Team[]; requests: TeamRequest[]; feedback: TeammateFeedback[] }>('/api/state');
+    setUsers(data.users || []);
+    setTeams(data.teams || []);
+    setRequests(data.requests || []);
+    setFeedbacks(data.feedback || []);
+    return data;
   }, []);
 
-  // Sync auth state to LocalStorage
-  React.useEffect(() => {
-    localStorage.setItem('squadup_is_authenticated', isAuthenticated ? 'true' : 'false');
-  }, [isAuthenticated]);
+  const signOut = useCallback(() => {
+    clearToken();
+    setCurrentUser(INITIAL_USERS[0]);
+    setAuthState('anonymous');
+  }, []);
 
-  React.useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('squadup_current_user', JSON.stringify(currentUser));
+  // Resolve the stored session token on boot.
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      const isDemo = await fetchDemoMode();
+      if (!cancelled) setDemoMode(isDemo);
+
+      const token = getToken();
+      if (!token) {
+        if (!cancelled) setAuthState('anonymous');
+        return;
+      }
+
+      try {
+        const { user } = await api<{ user: User }>('/api/auth/me');
+        if (cancelled) return;
+        setCurrentUser(user);
+        setAuthState('authenticated');
+        const data = await loadState();
+        if (!cancelled) {
+          // Re-read from state so XP/badges awarded server-side are reflected.
+          const fresh = (data.users || []).find((u: User) => u.id === user.id);
+          if (fresh) setCurrentUser(fresh);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 401) {
+          clearToken();
+        } else {
+          console.error('Failed to restore session', err);
+        }
+        setAuthState('anonymous');
+      }
+    };
+
+    bootstrap();
+    return () => { cancelled = true; };
+  }, [loadState]);
+
+  // Any expired session anywhere in the app drops back to the login screen.
+  const runAuthenticated = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        signOut();
+        return null;
+      }
+      const message = err instanceof ApiError ? err.message : 'Something went wrong';
+      alert(message);
+      return null;
     }
-  }, [currentUser]);
+  }, [signOut]);
 
-  // Filter pending requests for current user
-  const pendingRequestsForUser = requests.filter(r => r.receiverId === currentUser.id && r.status === 'pending');
-
-  // Active Team of current user
-  const currentTeam = teams.find(t => t.id === currentUser.teamId) || null;
-
-  // Handler: Switch User Identity
-  const handleSwitchUser = (user: User) => {
+  const handleAuthSuccess = async (token: string, user: User) => {
+    setToken(token);
     setCurrentUser(user);
-    setSelectedProfileUser(null);
+    setAuthState('authenticated');
+    await runAuthenticated(async () => {
+      const data = await loadState();
+      const fresh = (data.users || []).find((u: User) => u.id === user.id);
+      if (fresh) setCurrentUser(fresh);
+    });
+    navigate('/discover', { replace: true });
   };
 
-  // Handler: Register User
-  const handleRegisterUser = async (newUser: User) => {
-    try {
-      const res = await fetch('/api/users', {
+  const handleSwitchIdentity = async (userId: string) => {
+    const result = await runAuthenticated(() =>
+      api<{ token: string; user: User }>('/api/auth/demo-switch', { method: 'POST', body: { userId } })
+    );
+    if (!result) return;
+    setToken(result.token);
+    setCurrentUser(result.user);
+    await runAuthenticated(loadState);
+    navigate('/discover');
+  };
+
+  const handleUpdateUser = async (updatedUser: User) => {
+    const result = await runAuthenticated(() =>
+      api<{ user: User }>(`/api/users/${updatedUser.id}`, { method: 'PUT', body: updatedUser })
+    );
+    if (!result) return;
+    await runAuthenticated(loadState);
+    setCurrentUser(prev => (prev.id === result.user.id ? result.user : prev));
+  };
+
+  const handleSendTeamRequest = async (requestData: Omit<TeamRequest, 'id' | 'createdAt' | 'status'>) => {
+    const result = await runAuthenticated(() =>
+      api<{ request: TeamRequest }>('/api/requests', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newUser)
-      });
-      const data = await res.json();
-      if (data.success) {
-        await loadState();
-      }
-    } catch (err) {
-      console.error(err);
+        body: {
+          teamId: requestData.teamId,
+          teamName: requestData.teamName,
+          hackathonName: requestData.hackathonName,
+          receiverId: requestData.receiverId,
+          proposedRole: requestData.proposedRole,
+          message: requestData.message
+        }
+      })
+    );
+    if (!result) return;
+    await runAuthenticated(loadState);
+    alert('Invitation request sent!');
+  };
+
+  const handleRespondToRequest = async (requestId: string, status: 'accepted' | 'rejected') => {
+    const result = await runAuthenticated(() =>
+      api(`/api/requests/${requestId}`, { method: 'PUT', body: { status } })
+    );
+    if (!result) return;
+    await runAuthenticated(loadState);
+    if (status === 'accepted') {
+      alert('Invitation accepted! Workspace loaded.');
+      const me = await runAuthenticated(() => api<{ user: User }>('/api/auth/me'));
+      if (me) setCurrentUser(me.user);
+      navigate('/teams');
     }
   };
 
-  // Handler: Update Current User Skills / Badges
-  const handleUpdateUserSkills = async (updatedUser: User) => {
-    try {
-      const res = await fetch(`/api/users/${updatedUser.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedUser)
-      });
-      const data = await res.json();
-      if (data.success) {
-        await loadState();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Handler: Update User Profile Info
-  const handleUpdateProfile = async (updatedUser: User) => {
-    try {
-      const res = await fetch(`/api/users/${updatedUser.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedUser)
-      });
-      const data = await res.json();
-      if (data.success) {
-        await loadState();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Handler: Send Team Invitation Request
-  const handleSendTeamRequest = async (newRequestData: Omit<TeamRequest, 'id' | 'createdAt' | 'status'>) => {
-    const newReq: TeamRequest = {
-      ...newRequestData,
-      id: `req-${Date.now()}`,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
-    try {
-      const res = await fetch('/api/requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newReq)
-      });
-      const data = await res.json();
-      if (data.success) {
-        await loadState();
-        alert(`Invitation request sent to receiver!`);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Handler: Accept Team Invitation Request
-  const handleAcceptRequest = async (requestId: string) => {
-    try {
-      const res = await fetch(`/api/requests/${requestId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'accepted' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        await loadState();
-        alert("Invitation accepted! Workspace loaded.");
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Handler: Reject Team Request
-  const handleRejectRequest = async (requestId: string) => {
-    try {
-      const res = await fetch(`/api/requests/${requestId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'rejected' })
-      });
-      const data = await res.json();
-      if (data.success) {
-        await loadState();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  // Handler: Create Team
   const handleCreateTeam = async (newTeamData: Omit<Team, 'id' | 'createdAt'>) => {
-    const teamId = `team-${Date.now()}`;
-    const newTeam: Team = {
-      ...newTeamData,
-      id: teamId,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    try {
-      const res = await fetch('/api/teams', {
+    const result = await runAuthenticated(() =>
+      api<{ team: Team }>('/api/teams', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTeam)
-      });
-      const data = await res.json();
-      if (data.success) {
-        await loadState();
-        alert(`Success! Team ${newTeam.name} created.`);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+        body: {
+          name: newTeamData.name,
+          hackathonId: newTeamData.hackathonId,
+          hackathonName: newTeamData.hackathonName,
+          description: newTeamData.description,
+          lookingForRoles: newTeamData.lookingForRoles,
+          projectIdea: newTeamData.projectIdea
+        }
+      })
+    );
+    if (!result) return;
+    await runAuthenticated(loadState);
+    const me = await runAuthenticated(() => api<{ user: User }>('/api/auth/me'));
+    if (me) setCurrentUser(me.user);
+    alert(`Success! Team ${result.team.name} created.`);
+    navigate('/teams');
   };
 
-  // Handler: Submit Teammate Feedback Endorsement
   const handleSendFeedback = async (feedbackData: { senderId: string; senderName: string; receiverId: string; teamId: string; rating: number; comment: string; tags: string[] }) => {
-    try {
-      const res = await fetch('/api/feedback', {
+    const result = await runAuthenticated(() =>
+      api('/api/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(feedbackData)
-      });
-      const data = await res.json();
-      if (data.success) {
-        await loadState();
-      }
-    } catch (err) {
-      console.error(err);
-    }
+        body: {
+          receiverId: feedbackData.receiverId,
+          teamId: feedbackData.teamId,
+          rating: feedbackData.rating,
+          comment: feedbackData.comment,
+          tags: feedbackData.tags
+        }
+      })
+    );
+    if (!result) return;
+    await runAuthenticated(loadState);
+    const me = await runAuthenticated(() => api<{ user: User }>('/api/auth/me'));
+    if (me) setCurrentUser(me.user);
   };
 
-  // Handler: Navigate to Discovery with Role filter
-  const handleNavigateToDiscoveryWithRole = (role: UserRole) => {
-    setActiveTab('discovery');
-  };
-
-  if (isLoading) {
+  if (authState === 'loading') {
     return (
       <div className="min-h-screen bg-[#0c0915] flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -260,139 +235,227 @@ export function App() {
     );
   }
 
-  // If not authenticated, render Auth Gateway screen
-  if (!isAuthenticated) {
+  if (authState === 'anonymous') {
     return (
-      <AuthView
-        onLoginSuccess={(user) => {
-          setCurrentUser(user);
-          setIsAuthenticated(true);
-        }}
-        allUsers={users}
-        onRegisterUser={handleRegisterUser}
-      />
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            <AuthView
+              demoMode={demoMode}
+              allUsers={users}
+              onAuthSuccess={handleAuthSuccess}
+            />
+          }
+        />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
     );
   }
 
+  const pendingRequestsForUser = requests.filter(r => r.receiverId === currentUser.id && r.status === 'pending');
+  const currentTeam = teams.find(t => t.id === currentUser.teamId) || null;
+  const isVerified = hasProctoredBadge(currentUser);
+  const verificationGate = <VerificationGate currentUser={currentUser} onNavigate={(path) => navigate(path)} />;
+
   return (
-    <div className="min-h-screen nixtio-bg text-slate-100 font-sans antialiased selection:bg-purple-500 selection:text-white">
-      
-      {/* Top Header */}
+    <div className="min-h-screen w-full overflow-x-hidden nixtio-bg text-slate-100 font-sans antialiased selection:bg-purple-500 selection:text-white">
+
       <Header
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setSelectedProfileUser(null);
-          setActiveTab(tab);
-        }}
         currentUser={currentUser}
         allUsers={users}
-        onSwitchUser={handleSwitchUser}
+        demoMode={demoMode}
+        onSwitchIdentity={handleSwitchIdentity}
         pendingRequestsCount={pendingRequestsForUser.length}
         onOpenRequestsModal={() => setShowRequestsModal(true)}
-        onLogout={() => setIsAuthenticated(false)}
+        onLogout={signOut}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
 
-      {/* Main View Container */}
-      <main className="pb-16">
-        
-        {/* DISCOVERY TAB */}
-        {activeTab === 'discovery' && (
-          selectedProfileUser ? (
-            <ProfileView
-              user={selectedProfileUser}
-              isCurrentUser={selectedProfileUser.id === currentUser.id}
-              feedbacks={feedbacks.filter(f => f.receiverId === selectedProfileUser.id)}
-            />
-          ) : (
-            <TeammateDiscovery
-              currentUser={currentUser}
-              allUsers={users}
-              onSelectUser={(u) => setSelectedProfileUser(u)}
-              onSendTeamRequest={handleSendTeamRequest}
-              activeTeamName={currentTeam?.name || 'Team Nexus'}
-              activeHackathonName={currentTeam?.hackathonName || 'AI Innovations Global Hackathon 2026'}
-              onNavigateToAssessment={() => setActiveTab('assessment')}
-            />
-          )
-        )}
-
-        {/* SKILL ASSESSMENT ENGINE TAB */}
-        {activeTab === 'assessment' && (
-          <AssessmentView
-            currentUser={currentUser}
-            onUpdateUserSkills={handleUpdateUserSkills}
+      <motion.main
+        key={location.pathname}
+        className="pb-16"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Routes>
+          <Route
+            path="/discover"
+            element={
+              isVerified ? (
+                <TeammateDiscovery
+                  currentUser={currentUser}
+                  allUsers={users}
+                  onSelectUser={(u) => navigate(`/u/${u.id}`)}
+                  onSendTeamRequest={handleSendTeamRequest}
+                  activeTeamName={currentTeam?.name || 'Team Nexus'}
+                  activeHackathonName={currentTeam?.hackathonName || 'AI Innovations Global Hackathon 2026'}
+                  onNavigateToAssessment={() => navigate('/assessment')}
+                />
+              ) : verificationGate
+            }
           />
-        )}
 
-        {/* LEADERBOARD TAB */}
-        {activeTab === 'leaderboard' && (
-          <LeaderboardView
-            allUsers={users}
-            feedbacks={feedbacks}
-            currentUser={currentUser}
+          <Route
+            path="/u/:userId"
+            element={
+              <UserProfileRoute
+                users={users}
+                currentUser={currentUser}
+                feedbacks={feedbacks}
+              />
+            }
           />
-        )}
 
-        {/* PROFILE TAB */}
-        {activeTab === 'profile' && (
-          <ProfileView
-            user={currentUser}
-            isCurrentUser={true}
-            onUpdateProfile={handleUpdateProfile}
-            onTakeTestClick={() => setActiveTab('assessment')}
-            feedbacks={feedbacks.filter(f => f.receiverId === currentUser.id)}
+          <Route
+            path="/assessment"
+            element={
+              <AssessmentView
+                currentUser={currentUser}
+                onUpdateUserSkills={handleUpdateUser}
+              />
+            }
           />
-        )}
 
-        {/* TEAMS & WORKSPACE TAB */}
-        {activeTab === 'teams' && (
-          <TeamWorkspace
-            currentUser={currentUser}
-            allUsers={users}
-            activeTeam={currentTeam}
-            onCreateTeam={handleCreateTeam}
-            onNavigateToDiscoveryWithRole={handleNavigateToDiscoveryWithRole}
-            onSendFeedback={handleSendFeedback}
+          <Route
+            path="/leaderboard"
+            element={
+              <LeaderboardView
+                allUsers={users}
+                feedbacks={feedbacks}
+                currentUser={currentUser}
+              />
+            }
           />
-        )}
 
-        {/* HACKATHONS TAB */}
-        {activeTab === 'hackathons' && (
-          <HackathonsList
-            hackathons={hackathons}
-            onSelectHackathonFilter={(hackathonTitle) => {
-              setActiveTab('discovery');
-            }}
+          <Route
+            path="/profile"
+            element={
+              <ProfileView
+                user={currentUser}
+                isCurrentUser={true}
+                onUpdateProfile={handleUpdateUser}
+                onTakeTestClick={() => navigate('/assessment')}
+                feedbacks={feedbacks.filter(f => f.receiverId === currentUser.id)}
+              />
+            }
           />
-        )}
 
-      </main>
+          <Route
+            path="/teams"
+            element={
+              isVerified ? (
+                <TeamWorkspace
+                  currentUser={currentUser}
+                  allUsers={users}
+                  activeTeam={currentTeam}
+                  onCreateTeam={handleCreateTeam}
+                  onNavigateToDiscoveryWithRole={(_role: UserRole) => navigate('/discover')}
+                  onSendFeedback={handleSendFeedback}
+                />
+              ) : verificationGate
+            }
+          />
 
-      {/* INVITATIONS MODAL / DRAWER */}
+          <Route
+            path="/t/:teamId"
+            element={
+              isVerified ? (
+                <TeamRoute
+                  teams={teams}
+                  currentUser={currentUser}
+                  allUsers={users}
+                  onCreateTeam={handleCreateTeam}
+                  onSendFeedback={handleSendFeedback}
+                />
+              ) : verificationGate
+            }
+          />
+
+          <Route
+            path="/hackathons"
+            element={
+              <HackathonsList
+                hackathons={hackathons}
+                onSelectHackathonFilter={() => navigate('/discover')}
+              />
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/discover" replace />} />
+        </Routes>
+      </motion.main>
+
       {showRequestsModal && (
         <InvitationsModal
           requests={pendingRequestsForUser}
           onClose={() => setShowRequestsModal(false)}
-          onAcceptRequest={handleAcceptRequest}
-          onRejectRequest={handleRejectRequest}
+          onAcceptRequest={(id) => handleRespondToRequest(id, 'accepted')}
+          onRejectRequest={(id) => handleRespondToRequest(id, 'rejected')}
         />
       )}
 
-      {/* GLOBAL COMMAND PALETTE MODAL (CMD + K) */}
       <CommandPaletteModal
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
         users={users}
         hackathons={hackathons}
-        onSelectUser={(u) => setSelectedProfileUser(u)}
-        onNavigateTab={(tab) => {
-          setSelectedProfileUser(null);
-          setActiveTab(tab);
-        }}
+        onSelectUser={(u) => navigate(`/u/${u.id}`)}
+        onNavigatePath={(path) => navigate(path)}
       />
 
     </div>
+  );
+}
+
+// Public profile deep link: /u/:userId
+function UserProfileRoute({ users, currentUser, feedbacks }: {
+  users: User[];
+  currentUser: User;
+  feedbacks: TeammateFeedback[];
+}) {
+  const { userId } = useParams();
+  const user = users.find(u => u.id === userId);
+
+  if (!user) {
+    return <Navigate to="/discover" replace />;
+  }
+
+  return (
+    <ProfileView
+      user={user}
+      isCurrentUser={user.id === currentUser.id}
+      feedbacks={feedbacks.filter(f => f.receiverId === user.id)}
+    />
+  );
+}
+
+// Team deep link: /t/:teamId
+function TeamRoute({ teams, currentUser, allUsers, onCreateTeam, onSendFeedback }: {
+  teams: Team[];
+  currentUser: User;
+  allUsers: User[];
+  onCreateTeam: (team: Omit<Team, 'id' | 'createdAt'>) => void;
+  onSendFeedback: (feedback: { senderId: string; senderName: string; receiverId: string; teamId: string; rating: number; comment: string; tags: string[] }) => void;
+}) {
+  const { teamId } = useParams();
+  const navigate = useNavigate();
+  const team = teams.find(t => t.id === teamId);
+
+  if (!team) {
+    return <Navigate to="/teams" replace />;
+  }
+
+  return (
+    <TeamWorkspace
+      currentUser={currentUser}
+      allUsers={allUsers}
+      activeTeam={team}
+      onCreateTeam={onCreateTeam}
+      onNavigateToDiscoveryWithRole={(_role: UserRole) => navigate('/discover')}
+      onSendFeedback={onSendFeedback}
+    />
   );
 }
 
