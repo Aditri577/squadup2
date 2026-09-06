@@ -3,7 +3,130 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { GoogleGenAI } from "@google/genai";
-import { INITIAL_USERS, INITIAL_TEAMS, INITIAL_REQUESTS } from "../src/data/mockData";
+
+const INITIAL_USERS: any[] = [
+  {
+    id: 'user-aditi',
+    name: 'Aditi Saxena',
+    email: 'aditi.saxena@example.edu',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=250',
+    role: 'Full Stack Developer',
+    college: 'IIT Delhi',
+    bio: 'Passionate about building scalable web apps and AI-powered team tools. 3x Hackathon winner.',
+    location: 'New Delhi, India',
+    github: 'https://github.com/aditisaxena',
+    linkedin: 'https://linkedin.com/in/aditisaxena',
+    portfolio: 'https://aditisaxena.dev',
+    preferredDomains: ['AI/GenAI', 'EdTech', 'FinTech'],
+    lookingForTeam: true,
+    teamId: 'team-squadup-core',
+    joinedAt: '2026-01-15',
+    experience: 'Advanced (3+ yrs)',
+    availability: 'Weekends',
+    hackathons: ['AI Innovations Global Hackathon 2026', 'SIH 2026'],
+    skills: [
+      { id: 'sk-1', name: 'React.js', category: 'Frontend (React/JS)', selfRating: 5, badgeLevel: 'Green', scorePercent: 95, verifiedAt: '2026-07-20' },
+      { id: 'sk-2', name: 'Node.js & Express', category: 'Backend (Node/Express)', selfRating: 4, badgeLevel: 'Green', scorePercent: 85, verifiedAt: '2026-07-22' },
+      { id: 'sk-3', name: 'PostgreSQL & SQL', category: 'Database Management (SQL)', selfRating: 4, badgeLevel: 'Yellow', scorePercent: 75, verifiedAt: '2026-07-25' }
+    ],
+    testResults: [
+      { id: 'tr-1', userId: 'user-aditi', skillName: 'React.js', category: 'Frontend (React/JS)', scorePercent: 95, totalQuestions: 20, correctCount: 19, badgeLevel: 'Green', warningCount: 0, terminated: false, completedAt: '2026-07-20T14:30:00Z', topicBreakdown: { 'Hooks & State': { correct: 8, total: 8 }, 'Virtual DOM': { correct: 6, total: 6 }, 'Performance': { correct: 5, total: 6 } }, antiCheatLogs: [] }
+    ]
+  },
+  {
+    id: 'user-rohan',
+    name: 'Rohan Mehta',
+    email: 'rohan.mehta@example.edu',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
+    role: 'AI/ML Engineer',
+    college: 'BITS Pilani',
+    bio: 'Specializing in PyTorch, computer vision, and building LLM pipelines. Looking for a strong squad for AI Innovations Hackathon.',
+    location: 'Pilani, India',
+    github: 'https://github.com/rohanmehta-ai',
+    linkedin: 'https://linkedin.com/in/rohanmehta',
+    preferredDomains: ['AI/GenAI', 'Healthcare', 'Autonomous Systems'],
+    lookingForTeam: true,
+    teamId: 'team-neural-surge',
+    joinedAt: '2026-02-10',
+    experience: 'Intermediate (1-3 yrs)',
+    availability: 'Full-time',
+    hackathons: ['AI Innovations Global Hackathon 2026'],
+    skills: [
+      { id: 'sk-4', name: 'PyTorch & Transformers', category: 'AI/ML (Python/PyTorch)', selfRating: 5, badgeLevel: 'Green', scorePercent: 90, verifiedAt: '2026-07-21' },
+      { id: 'sk-5', name: 'Python Systems', category: 'AI/ML (Python/PyTorch)', selfRating: 4, badgeLevel: 'Yellow', scorePercent: 78, verifiedAt: '2026-07-23' }
+    ],
+    testResults: [
+      { id: 'tr-2', userId: 'user-rohan', skillName: 'PyTorch & Transformers', category: 'AI/ML (Python/PyTorch)', scorePercent: 90, totalQuestions: 20, correctCount: 18, badgeLevel: 'Green', warningCount: 1, terminated: false, completedAt: '2026-07-21T10:15:00Z', topicBreakdown: { 'Model Architecture': { correct: 7, total: 7 }, 'Tensors & Autograd': { correct: 6, total: 7 }, 'Optimization': { correct: 5, total: 6 } }, antiCheatLogs: [] }
+    ]
+  },
+  {
+    id: 'user-priya',
+    name: 'Priya Sharma',
+    email: 'priya.sharma@example.edu',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=250',
+    role: 'UI/UX Designer',
+    college: 'NID Ahmedabad',
+    bio: 'Crafting user-centric interfaces and interactive prototypes. Bridging aesthetic design with technical implementation.',
+    location: 'Ahmedabad, India',
+    github: 'https://github.com/priyadesigns',
+    linkedin: 'https://linkedin.com/in/priyasharma',
+    portfolio: 'https://priyasharma.design',
+    preferredDomains: ['EdTech', 'Social Good', 'FinTech'],
+    lookingForTeam: true,
+    teamId: 'team-squadup-core',
+    joinedAt: '2026-03-01',
+    experience: 'Advanced (3+ yrs)',
+    availability: 'Evenings',
+    hackathons: ['AI Innovations Global Hackathon 2026', 'UI/UX Design Blitz 2026'],
+    skills: [
+      { id: 'sk-6', name: 'Figma & Design Systems', category: 'UI/UX Design', selfRating: 5, badgeLevel: 'Green', scorePercent: 92, verifiedAt: '2026-07-22' },
+      { id: 'sk-7', name: 'HTML5/CSS3 & Tailwind', category: 'Frontend (React/JS)', selfRating: 4, badgeLevel: 'Yellow', scorePercent: 76, verifiedAt: '2026-07-24' }
+    ],
+    testResults: [
+      { id: 'tr-3', userId: 'user-priya', skillName: 'Figma & Design Systems', category: 'UI/UX Design', scorePercent: 92, totalQuestions: 20, correctCount: 18, badgeLevel: 'Green', warningCount: 0, terminated: false, completedAt: '2026-07-22T16:45:00Z', topicBreakdown: { 'Figma Components & AutoLayout': { correct: 7, total: 7 }, 'Accessibility & Contrast (WCAG)': { correct: 6, total: 7 }, 'User Testing': { correct: 5, total: 6 } }, antiCheatLogs: [] }
+    ]
+  }
+];
+
+const INITIAL_TEAMS: any[] = [
+  {
+    id: 'team-squadup-core',
+    name: 'Team Nexus',
+    hackathonId: 'hack-1',
+    hackathonName: 'AI Innovations Global Hackathon 2026',
+    description: 'Building SquadUP - a verified skill-based team recommendation and anti-cheat assessment workspace.',
+    leaderId: 'user-aditi',
+    createdAt: '2026-07-20',
+    lookingForRoles: ['Backend Developer', 'AI/ML Engineer'],
+    members: [
+      { userId: 'user-aditi', role: 'Full Stack Developer', joinedAt: '2026-07-20', isLeader: true },
+      { userId: 'user-priya', role: 'UI/UX Designer', joinedAt: '2026-07-22', isLeader: false }
+    ],
+    projectIdea: {
+      title: 'SquadUP Verified Team Matcher',
+      description: 'A platform ensuring hackathon teammates possess verified technical abilities with automated proctored tests and skill-gap balance analytics.',
+      techStack: ['React', 'Express', 'Gemini AI', 'Tailwind CSS']
+    }
+  }
+];
+
+const INITIAL_REQUESTS: any[] = [
+  {
+    id: 'req-1',
+    teamId: 'team-squadup-core',
+    teamName: 'Team Nexus',
+    hackathonName: 'AI Innovations Global Hackathon 2026',
+    senderId: 'user-rohan',
+    senderName: 'Rohan Mehta',
+    senderAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=250',
+    senderRole: 'AI/ML Engineer',
+    receiverId: 'user-aditi',
+    proposedRole: 'Frontend Developer',
+    message: 'Hey Aditi! We saw your Green Badge in React.js. Would love to collaborate!',
+    status: 'pending',
+    createdAt: '2026-08-01T12:00:00Z'
+  }
+];
 
 const app = express();
 
