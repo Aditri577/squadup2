@@ -532,6 +532,26 @@
       "github": "",
       "linkedin": "",
       "portfolio": ""
+    },
+    {
+      "id": "usr-1788715330235",
+      "name": "Aditri Saxena",
+      "email": "saxenaaditri255@gmail.com",
+      "avatar": "duo-owl",
+      "role": "Full Stack Developer",
+      "college": "Tech University",
+      "location": "India",
+      "bio": "Verified developer with Google authenticated account.",
+      "skills": [],
+      "testResults": [],
+      "joinedAt": "2026-09-06",
+      "preferredDomains": [
+        "AI/GenAI"
+      ],
+      "lookingForTeam": true,
+      "xpPoints": 100,
+      "level": 1,
+      "passwordHash": "$2b$10$UelRCJzvCPOK4FLREK.TNOmqCe2XJRoKeCs84KoUBIdJ/crWZkax."
     }
   ],
   "teams": [

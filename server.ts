@@ -24,6 +24,16 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
+// Auto-initialize DB on first incoming request (crucial for Vercel serverless functions)
+let dbInitPromise: Promise<void> | null = null;
+app.use(async (_req, _res, next) => {
+  if (!dbInitPromise) {
+    dbInitPromise = initDb().catch(e => console.error("Database initialization failed:", e));
+  }
+  await dbInitPromise;
+  next();
+});
+
 const DEMO_MODE = process.env.DEMO_MODE === "true";
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "squadup123";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
@@ -81,7 +91,9 @@ const ai = new GoogleGenAI({
   },
 });
 
-const DB_FILE = path.join(process.cwd(), "db.json");
+const DB_FILE = process.env.VERCEL
+  ? path.join("/tmp", "db.json")
+  : path.join(process.cwd(), "db.json");
 
 // Helper to calculate Level from XP
 function getXpLevel(xp: number): number {
@@ -271,6 +283,19 @@ async function initDb() {
 
   if (!useMysql) {
     const demoHash = await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS);
+
+    // On Vercel, copy packaged db.json from project root to writable /tmp if not already there
+    if (process.env.VERCEL && !fs.existsSync(DB_FILE)) {
+      const rootDb = path.join(process.cwd(), "db.json");
+      if (fs.existsSync(rootDb)) {
+        try {
+          fs.copyFileSync(rootDb, DB_FILE);
+          console.log("Database: Copied seed db.json to /tmp/db.json for Vercel.");
+        } catch (e) {
+          console.warn("Database: Failed to copy root db.json to /tmp, will initialize fresh.", e);
+        }
+      }
+    }
 
     // Initialize file-based DB
     if (!fs.existsSync(DB_FILE)) {
@@ -1058,4 +1083,8 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;

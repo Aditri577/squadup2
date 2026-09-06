@@ -309,27 +309,24 @@ const AuthView: React.FC<AuthViewProps> = ({
   const handleDemoLogin = () => {
     setError("");
 
-    if (!demoMode) return;
-
-    const demoUser =
-      allUsers[0] ||
-      ({
+    const demoUser: User =
+      allUsers[0] || {
         id: "demo-user",
         name: "Demo User",
         email: "demo@squadup.dev",
-        avatar: "",
+        avatar: "duo-owl",
         role: "Frontend Developer",
         college: "Demo College",
         location: "India",
         bio: "Demo SquadUP user",
-        skills: ["React", "JavaScript", "TypeScript"],
-        testResults: {},
-        joinedAt: new Date().toISOString(),
-        preferredDomains: [],
+        skills: [],
+        testResults: [],
+        joinedAt: new Date().toISOString().split('T')[0],
+        preferredDomains: ["AI/GenAI"],
         lookingForTeam: true,
         xpPoints: 0,
         level: 1,
-      } as User);
+      };
 
     completeAuth("local-dev-token", demoUser);
   };
