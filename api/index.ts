@@ -713,9 +713,15 @@ router.post("/ai/match-analysis", requireAuth, async (req, res) => {
 app.use("/api", router);
 app.use("/", router);
 
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error("Serverless API Error:", err);
-  res.status(500).json({ error: err?.message || "Internal server error" });
-});
-
-export default app;
+export default function handler(req: any, res: any) {
+  return new Promise((resolve) => {
+    app(req, res, (err: any) => {
+      if (err) {
+        res.status(500).json({ error: err?.message || "Internal server error" });
+      } else {
+        res.status(404).json({ error: `Route not found for ${req.method} ${req.url}` });
+      }
+      resolve(null);
+    });
+  });
+}
