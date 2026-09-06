@@ -4,6 +4,7 @@ import { getRandomQuestions } from '../data/questionBank';
 import { BadgePill } from './BadgePill';
 import { useProctoring } from '../utils/useProctoring';
 import confetti from 'canvas-confetti';
+import { useToast } from './Toast';
 import { 
   Award, 
   ShieldAlert, 
@@ -49,6 +50,7 @@ const CATEGORIES: { name: SkillCategory; desc: string; icon: string }[] = [
 ];
 
 export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onUpdateUserSkills }) => {
+  const toast = useToast();
   const [selectedCategory, setSelectedCategory] = useState<SkillCategory | null>(null);
   const [testState, setTestState] = useState<'idle' | 'briefing' | 'active' | 'completed'>('idle');
   const [launching, setLaunching] = useState<boolean>(false);
@@ -333,7 +335,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
     const result: TestResult = {
       id: `res-${Date.now()}`,
       userId: currentUser.id,
-      skillName: category.split(' ')[0], // e.g. React.js
+      skillName: category,
       category,
       scorePercent,
       totalQuestions: activeQuestions.length,
@@ -366,7 +368,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
 
     const skillName = selectedCategory;
     const existingSkills = [...currentUser.skills];
-    const skillIndex = existingSkills.findIndex(s => s.category === selectedCategory || s.name.includes(skillName));
+    const skillIndex = existingSkills.findIndex(s => s.category === selectedCategory || s.name === skillName);
 
     if (skillIndex >= 0) {
       existingSkills[skillIndex] = {
@@ -378,7 +380,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
     } else {
       existingSkills.push({
         id: `sk-${Date.now()}`,
-        name: selectedCategory.split(' ')[0],
+        name: selectedCategory,
         category: selectedCategory,
         selfRating: testResult.badgeLevel === 'Green' ? 5 : testResult.badgeLevel === 'Yellow' ? 4 : 3,
         badgeLevel: testResult.badgeLevel,
@@ -394,7 +396,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
     };
 
     onUpdateUserSkills(updatedUser);
-    alert(`Success! ${testResult.badgeLevel} Badge for ${selectedCategory} attached to your profile.`);
+    toast.success(`Success! ${testResult.badgeLevel} Badge for ${selectedCategory} attached to your profile.`);
   };
 
   const formatTime = (secs: number) => {

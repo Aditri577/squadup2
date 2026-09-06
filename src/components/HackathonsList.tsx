@@ -17,6 +17,7 @@ import {
   Video,
   X
 } from 'lucide-react';
+import { useToast } from './Toast';
 
 interface HackathonsListProps {
   hackathons: Hackathon[];
@@ -68,6 +69,7 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
   hackathons,
   onSelectHackathonFilter
 }) => {
+  const toast = useToast();
   const [projects, setProjects] = useState<SubmittedProject[]>(() => {
     const saved = localStorage.getItem('squadup_submitted_projects');
     return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
@@ -118,7 +120,7 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
     setGithubUrl('');
     setDemoUrl('');
     setTechStackInput('');
-    alert('🚀 Project submitted successfully to Hackathon Demo Showcase!');
+    toast.success('🚀 Project submitted successfully to Hackathon Demo Showcase!');
   };
 
   return (

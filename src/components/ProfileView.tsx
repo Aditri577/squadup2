@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Skill, TestResult, UserRole, SkillCategory } from '../types';
 import { BadgePill } from './BadgePill';
+import { useToast } from './Toast';
 import { 
   UserCheck, 
   Award, 
@@ -62,6 +63,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onTakeTestClick,
   feedbacks
 }) => {
+  const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   
   // Editable fields
@@ -82,6 +84,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [newSkillCategory, setNewSkillCategory] = useState<SkillCategory>('Frontend (React/JS)');
   const [newSkillRating, setNewSkillRating] = useState<number>(4);
 
+  // Sync state when user prop changes
+  useEffect(() => {
+    setName(user.name);
+    setRole(user.role);
+    setAvatar(user.avatar);
+    setBio(user.bio);
+    setCollege(user.college);
+    setLocation(user.location);
+    setGithub(user.github || '');
+    setLinkedin(user.linkedin || '');
+    setPortfolio(user.portfolio || '');
+    setLookingForTeam(user.lookingForTeam);
+    setSkills(user.skills);
+  }, [user]);
+
   const handleSaveProfile = () => {
     if (!onUpdateProfile) return;
     const updated: User = {
@@ -100,7 +117,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     };
     onUpdateProfile(updated);
     setIsEditing(false);
-    alert('🎉 Profile updated successfully! Changes saved to real-time session.');
+    toast.success('🎉 Profile updated successfully!');
   };
 
   const handleAddSkill = (e: React.FormEvent) => {

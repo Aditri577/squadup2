@@ -994,7 +994,7 @@ Return JSON strictly matching this array format:
 ]`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -1024,7 +1024,7 @@ app.post("/api/ai/match-analysis", requireAuth, async (req, res) => {
     const prompt = `Analyze if candidate ${candidate.name} (Role: ${candidate.role}, Verified Skills: ${candidate.skills.map((s: any) => `${s.name} - Badge ${s.badgeLevel}`).join(', ')}) is a good fit for a team in "${hackathonTitle}" that currently lacks: ${teamSkillGaps.join(', ')}. Provide a 2-3 sentence concise recommendation strategy.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-1.5-flash",
       contents: prompt,
     });
 

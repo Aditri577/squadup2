@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Reveal, CountUp } from './Motion';
 import { User, UserRole, BadgeLevel, TeamRequest } from '../types';
@@ -30,6 +30,10 @@ interface TeammateDiscoveryProps {
   activeTeamName?: string;
   activeHackathonName?: string;
   onNavigateToAssessment?: () => void;
+  // Filter props set by parent (Hackathons page, Teams page)
+  initialHackathonFilter?: string;
+  initialRoleFilter?: string;
+  onClearFilters?: () => void;
 }
 
 const ROLES: UserRole[] = [
@@ -43,6 +47,7 @@ const ROLES: UserRole[] = [
 ];
 
 import { calculateUserMatchScore } from '../utils/aiMatchmaker';
+import { api } from '../utils/api';
 
 export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
   currentUser,
@@ -51,7 +56,10 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
   onSendTeamRequest,
   activeTeamName = 'Team Nexus',
   activeHackathonName = 'AI Innovations Global Hackathon 2026',
-  onNavigateToAssessment
+  onNavigateToAssessment,
+  initialHackathonFilter = '',
+  initialRoleFilter = '',
+  onClearFilters
 }) => {
   // Draft filter states (before clicking SEARCH)
   const [searchTermDraft, setSearchTermDraft] = useState('');
@@ -75,6 +83,18 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
     availability: 'all',
     hackathon: 'all'
   });
+
+  // Apply incoming filters from parent (Hackathons tab, Teams tab)
+  useEffect(() => {
+    if (initialHackathonFilter) {
+      setHackathonDraft(initialHackathonFilter);
+      setAppliedFilters(prev => ({ ...prev, hackathon: initialHackathonFilter }));
+    }
+    if (initialRoleFilter) {
+      setDomainDraft(initialRoleFilter);
+      setAppliedFilters(prev => ({ ...prev, domain: initialRoleFilter }));
+    }
+  }, [initialHackathonFilter, initialRoleFilter]);
 
   // Invitation Modal State
   const [inviteUser, setInviteUser] = useState<User | null>(null);
@@ -174,16 +194,14 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
     setAiMatchAnalysis(null);
 
     try {
-      const res = await fetch('/api/ai/match-analysis', {
+      const data = await api<{ analysis: string }>('/api/ai/match-analysis', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           candidate,
           teamSkillGaps: [proposedRole],
           hackathonTitle: activeHackathonName
-        })
+        }
       });
-      const data = await res.json();
       setAiMatchAnalysis(data.analysis || 'High compatibility candidate for your team.');
     } catch (err) {
       setAiMatchAnalysis(`${candidate.name} is a strong candidate with verified badges in ${candidate.skills.map(s => s.name).join(', ')}.`);
@@ -216,7 +234,6 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
       message: inviteMessage
     });
 
-    alert(`Team Invitation sent to ${inviteUser.name}!`);
     setInviteUser(null);
   };
 

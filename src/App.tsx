@@ -15,6 +15,7 @@ import { LeaderboardView } from './components/LeaderboardView';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { VerificationGate } from './components/VerificationGate';
 import { api, ApiError, getToken, setToken, clearToken, fetchDemoMode } from './utils/api';
+import { useToast } from './components/Toast';
 
 type AuthState = 'loading' | 'anonymous' | 'authenticated';
 
@@ -33,10 +34,15 @@ export function App() {
 function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
 
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [demoMode, setDemoMode] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Discovery filters that can be set from other tabs
+  const [hackathonFilter, setHackathonFilter] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('');
 
   // Application Data State loaded from Backend API
   const [users, setUsers] = useState<User[]>(INITIAL_USERS);
@@ -113,7 +119,7 @@ function AppShell() {
         return null;
       }
       const message = err instanceof ApiError ? err.message : 'Something went wrong';
-      alert(message);
+      toast.error(message);
       return null;
     }
   }, [signOut]);
@@ -166,7 +172,7 @@ function AppShell() {
     );
     if (!result) return;
     await runAuthenticated(loadState);
-    alert('Invitation request sent!');
+    toast.success('Invitation sent successfully! 🎉');
   };
 
   const handleRespondToRequest = async (requestId: string, status: 'accepted' | 'rejected') => {
@@ -176,10 +182,12 @@ function AppShell() {
     if (!result) return;
     await runAuthenticated(loadState);
     if (status === 'accepted') {
-      alert('Invitation accepted! Workspace loaded.');
+      toast.success('Invitation accepted! Welcome to the team 🚀');
       const me = await runAuthenticated(() => api<{ user: User }>('/api/auth/me'));
       if (me) setCurrentUser(me.user);
       navigate('/teams');
+    } else {
+      toast.info('Invitation declined.');
     }
   };
 
@@ -201,7 +209,7 @@ function AppShell() {
     await runAuthenticated(loadState);
     const me = await runAuthenticated(() => api<{ user: User }>('/api/auth/me'));
     if (me) setCurrentUser(me.user);
-    alert(`Success! Team ${result.team.name} created.`);
+    toast.success(`Team "${result.team.name}" created! 🎉`);
     navigate('/teams');
   };
 
@@ -292,6 +300,9 @@ function AppShell() {
                   activeTeamName={currentTeam?.name || 'Team Nexus'}
                   activeHackathonName={currentTeam?.hackathonName || 'AI Innovations Global Hackathon 2026'}
                   onNavigateToAssessment={() => navigate('/assessment')}
+                  initialHackathonFilter={hackathonFilter}
+                  initialRoleFilter={roleFilter}
+                  onClearFilters={() => { setHackathonFilter(''); setRoleFilter(''); }}
                 />
               ) : verificationGate
             }
@@ -351,7 +362,10 @@ function AppShell() {
                   allUsers={users}
                   activeTeam={currentTeam}
                   onCreateTeam={handleCreateTeam}
-                  onNavigateToDiscoveryWithRole={(_role: UserRole) => navigate('/discover')}
+                  onNavigateToDiscoveryWithRole={(role: UserRole) => {
+                    setRoleFilter(role);
+                    navigate('/discover');
+                  }}
                   onSendFeedback={handleSendFeedback}
                 />
               ) : verificationGate
@@ -378,7 +392,10 @@ function AppShell() {
             element={
               <HackathonsList
                 hackathons={hackathons}
-                onSelectHackathonFilter={() => navigate('/discover')}
+                onSelectHackathonFilter={(hackathonName) => {
+                  setHackathonFilter(hackathonName);
+                  navigate('/discover');
+                }}
               />
             }
           />
