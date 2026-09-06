@@ -14,6 +14,7 @@ import { AuthView } from './components/AuthView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { VerificationGate } from './components/VerificationGate';
+import { LandingPage } from './components/LandingPage';
 import { api, ApiError, getToken, setToken, clearToken, fetchDemoMode } from './utils/api';
 import { useToast } from './components/Toast';
 
@@ -247,6 +248,15 @@ function AppShell() {
     return (
       <Routes>
         <Route
+          path="/"
+          element={
+            <LandingPage
+              onGetStarted={() => navigate('/login')}
+              onLogin={() => navigate('/login')}
+            />
+          }
+        />
+        <Route
           path="/login"
           element={
             <AuthView
@@ -256,7 +266,7 @@ function AppShell() {
             />
           }
         />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
@@ -288,6 +298,8 @@ function AppShell() {
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
         <Routes>
+          <Route path="/" element={<Navigate to="/discover" replace />} />
+          <Route path="/login" element={<Navigate to="/discover" replace />} />
           <Route
             path="/discover"
             element={
