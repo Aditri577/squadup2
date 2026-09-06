@@ -25,21 +25,10 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Auto-initialize DB on first incoming request (crucial for Vercel serverless functions)
-let dbInitPromise: Promise<void> | null = null;
-app.use(async (_req, _res, next) => {
-  if (!dbInitPromise) {
-    dbInitPromise = initDb().catch(e => console.error("Database initialization failed:", e));
-  }
-  await dbInitPromise;
-  next();
-});
-
 const DEMO_MODE = process.env.DEMO_MODE === "true";
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "squadup123";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const BCRYPT_ROUNDS = 10;
-
 const JWT_SECRET = process.env.JWT_SECRET || "squadup-prod-secret-fallback-key-2026-auth-token";
 
 function signToken(userId: string): string {
@@ -64,7 +53,6 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
   }
 }
 
-// passwordHash must never leave the server, including through /api/state.
 function sanitizeUser(user: any) {
   if (!user) return user;
   const { passwordHash, ...safe } = user;
@@ -96,10 +84,9 @@ function getAiClient(): GoogleGenAI | null {
 }
 
 const DB_FILE = process.env.VERCEL
-  ? path.join("/tmp", "db.json")
+  ? path.join("/tmp", "squadup_db.json")
   : path.join(process.cwd(), "db.json");
 
-// Helper to calculate Level from XP
 function getXpLevel(xp: number): number {
   if (xp < 200) return 1;
   if (xp < 400) return 2;
@@ -108,14 +95,12 @@ function getXpLevel(xp: number): number {
   return 5;
 }
 
-// Map mock users to include XP and Level
 const defaultUsers = INITIAL_USERS.map(u => ({
   ...u,
   xpPoints: u.id === 'user-aditi' ? 450 : u.id === 'user-rohan' ? 380 : 150,
   level: u.id === 'user-aditi' ? 3 : u.id === 'user-rohan' ? 2 : 1
 }));
 
-// Default mock feedback rows
 const defaultFeedback = [
   {
     id: "fb-1",
@@ -130,11 +115,20 @@ const defaultFeedback = [
   }
 ];
 
+// In-Memory Database cache (guarantees fast, crash-proof operation on Vercel Serverless)
+let memoryDb: {
+  users: any[];
+  teams: any[];
+  requests: any[];
+  feedback: any[];
+} | null = null;
+
 let useMysql = false;
 let pool: mysql.Pool | null = null;
 
-// Initialize Database Connection
 async function initDb() {
+  if (memoryDb) return; // already loaded
+
   if (process.env.DB_HOST && process.env.DB_USER) {
     try {
       pool = mysql.createPool({
@@ -147,12 +141,10 @@ async function initDb() {
         connectionLimit: 5,
       });
 
-      // Test connection
       const conn = await pool.getConnection();
       console.log("Database: Connected to MySQL successfully.");
       conn.release();
 
-      // Create Tables
       await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
           id VARCHAR(255) PRIMARY KEY,
@@ -181,11 +173,9 @@ async function initDb() {
         )
       `);
 
-      // CREATE TABLE IF NOT EXISTS will not add columns to a pre-existing table.
       const [hashColumn]: any = await pool.query("SHOW COLUMNS FROM users LIKE 'passwordHash'");
       if (hashColumn.length === 0) {
         await pool.query("ALTER TABLE users ADD COLUMN passwordHash VARCHAR(255) NULL");
-        console.log("Database: Added passwordHash column to users table.");
       }
 
       await pool.query(`
@@ -235,7 +225,6 @@ async function initDb() {
         )
       `);
 
-      // Seed data if empty
       const demoHash = await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS);
       const [userRows]: any = await pool.query("SELECT COUNT(*) as count FROM users");
       if (userRows[0].count === 0) {
@@ -263,71 +252,53 @@ async function initDb() {
             [f.id, f.senderId, f.senderName, f.receiverId, f.teamId, f.rating, f.comment, JSON.stringify(f.tags), f.createdAt]
           );
         }
-        console.log("Database: MySQL seeded with initial mock data.");
       }
-
-      // Rows created before auth existed have no credentials yet.
-      const [missingHash] = await pool.query(
-        "UPDATE users SET passwordHash = ? WHERE passwordHash IS NULL",
-        [demoHash]
-      );
-      if ((missingHash as any).affectedRows > 0) {
-        console.log(`Auth: Set demo password for ${(missingHash as any).affectedRows} pre-existing user(s).`);
-      }
-
       useMysql = true;
     } catch (err) {
-      console.warn("Database: MySQL initialization failed, falling back to JSON local file database.", err);
+      console.warn("Database: MySQL init failed, using Memory/JSON DB fallback.", err);
       useMysql = false;
     }
-  } else {
-    console.log("Database: No MySQL environment variables. Using JSON local file database.");
-    useMysql = false;
   }
 
   if (!useMysql) {
     const demoHash = await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS);
 
-    // On Vercel, copy packaged db.json from project root to writable /tmp if not already there
-    if (process.env.VERCEL && !fs.existsSync(DB_FILE)) {
-      const rootDb = path.join(process.cwd(), "db.json");
-      if (fs.existsSync(rootDb)) {
-        try {
-          fs.copyFileSync(rootDb, DB_FILE);
-          console.log("Database: Copied seed db.json to /tmp/db.json for Vercel.");
-        } catch (e) {
-          console.warn("Database: Failed to copy root db.json to /tmp, will initialize fresh.", e);
-        }
+    if (fs.existsSync(DB_FILE)) {
+      try {
+        const raw = fs.readFileSync(DB_FILE, "utf8");
+        memoryDb = JSON.parse(raw);
+      } catch (err) {
+        console.warn("Database: Could not parse DB_FILE, creating fresh in-memory DB:", err);
       }
     }
 
-    // Initialize file-based DB
-    if (!fs.existsSync(DB_FILE)) {
-      const initialDbData = {
+    if (!memoryDb) {
+      memoryDb = {
         users: defaultUsers.map(u => ({ ...u, passwordHash: demoHash })),
         teams: INITIAL_TEAMS,
         requests: INITIAL_REQUESTS,
         feedback: defaultFeedback
       };
-      fs.writeFileSync(DB_FILE, JSON.stringify(initialDbData, null, 2), "utf8");
-      console.log("Database: Created local db.json file with seeded mock data.");
+      try {
+        fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
+      } catch (e) {
+        // Safe ignore on read-only environments
+      }
     } else {
-      // Records written before auth existed have no credentials yet.
-      const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-      const users = data.users || [];
+      const users = memoryDb.users || [];
       const missing = users.filter((u: any) => !u.passwordHash);
       if (missing.length > 0) {
         for (const u of missing) u.passwordHash = demoHash;
-        data.users = users;
-        fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
-        console.log(`Auth: Set demo password for ${missing.length} pre-existing user(s) in db.json.`);
+        try {
+          fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
+        } catch (e) {}
       }
     }
   }
 }
 
-// Read/Write wrappers
 async function getUsers(): Promise<any[]> {
+  await initDb();
   if (useMysql && pool) {
     const [rows]: any = await pool.query("SELECT * FROM users");
     return rows.map((r: any) => ({
@@ -338,13 +309,12 @@ async function getUsers(): Promise<any[]> {
       testResults: typeof r.testResults === 'string' ? JSON.parse(r.testResults) : r.testResults,
       hackathons: typeof r.hackathons === 'string' ? JSON.parse(r.hackathons) : (r.hackathons || [])
     }));
-  } else {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    return data.users || [];
   }
+  return memoryDb?.users || defaultUsers;
 }
 
 async function saveUsers(users: any[]): Promise<void> {
+  await initDb();
   if (useMysql && pool) {
     for (const u of users) {
       const columns = [u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []), u.passwordHash || null];
@@ -357,13 +327,15 @@ async function saveUsers(users: any[]): Promise<void> {
       );
     }
   } else {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    data.users = users;
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
+    if (memoryDb) memoryDb.users = users;
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
+    } catch (e) {}
   }
 }
 
 async function getTeams(): Promise<any[]> {
+  await initDb();
   if (useMysql && pool) {
     const [rows]: any = await pool.query("SELECT * FROM teams");
     return rows.map((r: any) => ({
@@ -372,13 +344,12 @@ async function getTeams(): Promise<any[]> {
       lookingForRoles: typeof r.lookingForRoles === 'string' ? JSON.parse(r.lookingForRoles) : r.lookingForRoles,
       projectIdea: r.projectIdea ? (typeof r.projectIdea === 'string' ? JSON.parse(r.projectIdea) : r.projectIdea) : undefined
     }));
-  } else {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    return data.teams || [];
   }
+  return memoryDb?.teams || INITIAL_TEAMS;
 }
 
 async function saveTeams(teams: any[]): Promise<void> {
+  await initDb();
   if (useMysql && pool) {
     const ids = teams.map(t => t.id);
     if (ids.length > 0) {
@@ -396,23 +367,24 @@ async function saveTeams(teams: any[]): Promise<void> {
       );
     }
   } else {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    data.teams = teams;
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
+    if (memoryDb) memoryDb.teams = teams;
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
+    } catch (e) {}
   }
 }
 
 async function getRequests(): Promise<any[]> {
+  await initDb();
   if (useMysql && pool) {
     const [rows]: any = await pool.query("SELECT * FROM requests");
     return rows;
-  } else {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    return data.requests || [];
   }
+  return memoryDb?.requests || INITIAL_REQUESTS;
 }
 
 async function saveRequests(requests: any[]): Promise<void> {
+  await initDb();
   if (useMysql && pool) {
     const ids = requests.map(r => r.id);
     if (ids.length > 0) {
@@ -427,26 +399,27 @@ async function saveRequests(requests: any[]): Promise<void> {
       );
     }
   } else {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    data.requests = requests;
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
+    if (memoryDb) memoryDb.requests = requests;
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
+    } catch (e) {}
   }
 }
 
 async function getFeedback(): Promise<any[]> {
+  await initDb();
   if (useMysql && pool) {
     const [rows]: any = await pool.query("SELECT * FROM feedback");
     return rows.map((r: any) => ({
       ...r,
       tags: typeof r.tags === 'string' ? JSON.parse(r.tags) : r.tags
     }));
-  } else {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    return data.feedback || [];
   }
+  return memoryDb?.feedback || defaultFeedback;
 }
 
 async function saveFeedback(feedbacks: any[]): Promise<void> {
+  await initDb();
   if (useMysql && pool) {
     for (const f of feedbacks) {
       await pool.query(
@@ -455,19 +428,21 @@ async function saveFeedback(feedbacks: any[]): Promise<void> {
       );
     }
   } else {
-    const data = JSON.parse(fs.readFileSync(DB_FILE, "utf8"));
-    data.feedback = feedbacks;
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf8");
+    if (memoryDb) memoryDb.feedback = feedbacks;
+    try {
+      fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
+    } catch (e) {}
   }
 }
 
-// API Routes
-app.get("/api/health", (_req, res) => {
+// ─── API Router Definition ───────────────────────────────────────────────────
+const apiRouter = express.Router();
+
+apiRouter.get("/health", (_req, res) => {
   res.json({ status: "ok", app: "SquadUP" });
 });
 
-// Endpoint: Public client configuration
-app.get("/api/config", (_req, res) => {
+apiRouter.get("/config", (_req, res) => {
   res.json({ demoMode: DEMO_MODE });
 });
 
@@ -486,8 +461,7 @@ function validateRegistration(body: any): string | null {
   return null;
 }
 
-// Endpoint: Register a new account
-app.post("/api/auth/register", async (req, res) => {
+apiRouter.post("/auth/register", async (req, res) => {
   try {
     const validationError = validateRegistration(req.body);
     if (validationError) {
@@ -530,8 +504,7 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-// Endpoint: Sign in with email and password
-app.post("/api/auth/login", async (req, res) => {
+apiRouter.post("/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) {
@@ -562,8 +535,7 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
-// Endpoint: Resolve the session token to the current user
-app.get("/api/auth/me", requireAuth, async (req, res) => {
+apiRouter.get("/auth/me", requireAuth, async (req, res) => {
   try {
     const users = await getUsers();
     const user = users.find(u => u.id === req.user!.id);
@@ -576,8 +548,7 @@ app.get("/api/auth/me", requireAuth, async (req, res) => {
   }
 });
 
-// Endpoint: Google Authentication with Real Email
-app.post("/api/auth/google", async (req, res) => {
+apiRouter.post("/auth/google", async (req, res) => {
   try {
     const { email, name, avatar } = req.body || {};
     if (!email || !EMAIL_PATTERN.test(String(email).trim())) {
@@ -591,7 +562,7 @@ app.post("/api/auth/google", async (req, res) => {
     if (!user) {
       const derivedName = name && typeof name === "string" && name.trim()
         ? name.trim()
-        : normalizedEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        : normalizedEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
 
       user = {
         id: `usr-${Date.now()}`,
@@ -621,53 +592,7 @@ app.post("/api/auth/google", async (req, res) => {
   }
 });
 
-// Endpoint: Demo-only Google-style sign in (for backward compatibility)
-app.post("/api/auth/demo-google", async (req, res) => {
-  try {
-    const { email, name, avatar } = req.body || {};
-    if (!email || !EMAIL_PATTERN.test(String(email).trim())) {
-      return res.status(400).json({ error: "A valid email address is required" });
-    }
-
-    const users = await getUsers();
-    const normalizedEmail = String(email).trim().toLowerCase();
-    let user = users.find(u => (u.email || "").toLowerCase() === normalizedEmail);
-
-    if (!user) {
-      const derivedName = name && typeof name === "string" && name.trim()
-        ? name.trim()
-        : normalizedEmail.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, l => l.toUpperCase());
-
-      user = {
-        id: `usr-${Date.now()}`,
-        name: derivedName,
-        email: String(email).trim(),
-        avatar: avatar || "duo-owl",
-        role: "Full Stack Developer",
-        college: "Google Auth User",
-        location: "India",
-        bio: "Signed in via Google authentication.",
-        skills: [],
-        testResults: [],
-        joinedAt: new Date().toISOString().split("T")[0],
-        preferredDomains: ["AI/GenAI"],
-        lookingForTeam: true,
-        xpPoints: 100,
-        level: 1,
-        passwordHash: await bcrypt.hash(DEMO_PASSWORD, BCRYPT_ROUNDS)
-      };
-      users.push(user);
-      await saveUsers(users);
-    }
-
-    res.json({ success: true, token: signToken(user.id), user: sanitizeUser(user) });
-  } catch (error: any) {
-    res.status(500).json({ error: "Failed to sign in", details: error.message });
-  }
-});
-
-// Endpoint: Demo-only identity switch, mints a real token for the target account
-app.post("/api/auth/demo-switch", async (req, res) => {
+apiRouter.post("/auth/demo-switch", async (req, res) => {
   if (!DEMO_MODE) {
     return res.status(404).json({ error: "Not found" });
   }
@@ -684,8 +609,7 @@ app.post("/api/auth/demo-switch", async (req, res) => {
   }
 });
 
-// Endpoint: Fetch complete state
-app.get("/api/state", requireAuth, async (_req, res) => {
+apiRouter.get("/state", requireAuth, async (_req, res) => {
   try {
     const users = await getUsers();
     const teams = await getTeams();
@@ -697,11 +621,9 @@ app.get("/api/state", requireAuth, async (_req, res) => {
   }
 });
 
-// Fields a client must never set directly through the profile update path.
 const IMMUTABLE_USER_FIELDS = ["id", "email", "passwordHash", "level", "teamId", "xpPoints"];
 
-// Endpoint: Update the signed-in user's own profile
-app.put("/api/users/:id", requireAuth, async (req, res) => {
+apiRouter.put("/users/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     if (id !== req.user!.id) {
@@ -729,8 +651,7 @@ app.put("/api/users/:id", requireAuth, async (req, res) => {
   }
 });
 
-// Endpoint: Create team
-app.post("/api/teams", requireAuth, async (req, res) => {
+apiRouter.post("/teams", requireAuth, async (req, res) => {
   try {
     const { name, hackathonId, hackathonName, description, lookingForRoles, projectIdea } = req.body;
     if (!name || !String(name).trim()) {
@@ -765,7 +686,6 @@ app.post("/api/teams", requireAuth, async (req, res) => {
     teams.push(newTeam);
     await saveTeams(teams);
 
-    // Award +100 XP to leader
     users = users.map(u => {
       if (u.id === newTeam.leaderId) {
         const newXp = (u.xpPoints || 100) + 100;
@@ -786,8 +706,7 @@ app.post("/api/teams", requireAuth, async (req, res) => {
   }
 });
 
-// Endpoint: Send team invite request
-app.post("/api/requests", requireAuth, async (req, res) => {
+apiRouter.post("/requests", requireAuth, async (req, res) => {
   try {
     const { teamId, teamName, hackathonName, receiverId, proposedRole, message } = req.body;
     if (!teamId || !receiverId) {
@@ -828,11 +747,10 @@ app.post("/api/requests", requireAuth, async (req, res) => {
   }
 });
 
-// Endpoint: Accept/reject request
-app.put("/api/requests/:id", requireAuth, async (req, res) => {
+apiRouter.put("/requests/:id", requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body; // 'accepted' | 'rejected'
+    const { status } = req.body;
     if (status !== "accepted" && status !== "rejected") {
       return res.status(400).json({ error: "Status must be 'accepted' or 'rejected'" });
     }
@@ -879,7 +797,7 @@ app.put("/api/requests/:id", requireAuth, async (req, res) => {
       let users = await getUsers();
       users = users.map(u => {
         if (u.id === targetReq.receiverId) {
-          const newXp = (u.xpPoints || 100) + 150; // +150 XP for joining team
+          const newXp = (u.xpPoints || 100) + 150;
           return {
             ...u,
             teamId: targetReq.teamId,
@@ -898,8 +816,7 @@ app.put("/api/requests/:id", requireAuth, async (req, res) => {
   }
 });
 
-// Endpoint: Submit teammate feedback
-app.post("/api/feedback", requireAuth, async (req, res) => {
+apiRouter.post("/feedback", requireAuth, async (req, res) => {
   try {
     const { receiverId, teamId, rating, comment, tags } = req.body;
     if (!receiverId || !teamId) {
@@ -925,7 +842,6 @@ app.post("/api/feedback", requireAuth, async (req, res) => {
       return res.status(404).json({ error: "Team not found" });
     }
 
-    // Feedback is only meaningful between people who actually shared a squad.
     const isMember = (userId: string) => team.members.some((m: any) => m.userId === userId);
     if (!isMember(sender.id) || !isMember(receiverId)) {
       return res.status(403).json({ error: "Both teammates must belong to this team" });
@@ -954,7 +870,6 @@ app.post("/api/feedback", requireAuth, async (req, res) => {
     feedbacks.push(newFeedback);
     await saveFeedback(feedbacks);
 
-    // +50 XP for giving feedback, +100 XP for receiving positive feedback
     const updatedUsers = users.map(u => {
       if (u.id === sender.id) {
         const newXp = (u.xpPoints || 100) + 50;
@@ -974,8 +889,7 @@ app.post("/api/feedback", requireAuth, async (req, res) => {
   }
 });
 
-// Endpoint: Generate AI Project Ideas based on Team Verified Skills
-app.post("/api/ai/project-ideas", requireAuth, async (req, res) => {
+apiRouter.post("/ai/project-ideas", requireAuth, async (req, res) => {
   try {
     const { hackathonTitle, hackathonDomain, teamMembers } = req.body;
 
@@ -985,7 +899,7 @@ app.post("/api/ai/project-ideas", requireAuth, async (req, res) => {
         ideas: [
           {
             title: "SmartHack AI Team Builder",
-            description: "A automated system matching developers based on skill tests and project goals.",
+            description: "An automated system matching developers based on skill tests and project goals.",
             techStack: ["React", "TypeScript", "Node.js", "Tailwind CSS"],
             complexity: "Intermediate",
             impact: "High - Solves team formation friction"
@@ -1040,8 +954,7 @@ Return JSON strictly matching this array format:
   }
 });
 
-// Endpoint: AI Teammate Match Analysis
-app.post("/api/ai/match-analysis", requireAuth, async (req, res) => {
+apiRouter.post("/ai/match-analysis", requireAuth, async (req, res) => {
   try {
     const { candidate, teamSkillGaps, hackathonTitle } = req.body;
 
@@ -1066,9 +979,13 @@ app.post("/api/ai/match-analysis", requireAuth, async (req, res) => {
   }
 });
 
-// Global Express error handler to safely capture serverless errors
+// Mount the router on both `/api` and `/` so any URL rewrite matches seamlessly
+app.use("/api", apiRouter);
+app.use("/", apiRouter);
+
+// Global Error Handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error("Express Error:", err);
+  console.error("Server API Error:", err);
   res.status(500).json({ error: err?.message || "Internal server error" });
 });
 
