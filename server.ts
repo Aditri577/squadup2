@@ -1,11 +1,11 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import fs from "fs";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import cors from "cors";
 import mysql from "mysql2/promise";
 import { INITIAL_USERS, INITIAL_TEAMS, INITIAL_REQUESTS } from "./src/data/mockData";
 
@@ -22,6 +22,7 @@ declare global {
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+app.use(cors());
 app.use(express.json());
 
 // Auto-initialize DB on first incoming request (crucial for Vercel serverless functions)
@@ -74,15 +75,25 @@ function sanitizeUsers(users: any[]) {
   return users.map(sanitizeUser);
 }
 
-// Initialize Gemini AI client on the server side
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY || "",
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
-});
+// Safe, lazy Gemini AI client initialization
+let aiClient: GoogleGenAI | null = null;
+function getAiClient(): GoogleGenAI | null {
+  if (!aiClient && process.env.GEMINI_API_KEY) {
+    try {
+      aiClient = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            "User-Agent": "aistudio-build",
+          },
+        },
+      });
+    } catch (err) {
+      console.warn("Could not instantiate Gemini AI client:", err);
+    }
+  }
+  return aiClient;
+}
 
 const DB_FILE = process.env.VERCEL
   ? path.join("/tmp", "db.json")
@@ -968,7 +979,8 @@ app.post("/api/ai/project-ideas", requireAuth, async (req, res) => {
   try {
     const { hackathonTitle, hackathonDomain, teamMembers } = req.body;
 
-    if (!process.env.GEMINI_API_KEY) {
+    const ai = getAiClient();
+    if (!ai) {
       return res.json({
         ideas: [
           {
@@ -1033,7 +1045,8 @@ app.post("/api/ai/match-analysis", requireAuth, async (req, res) => {
   try {
     const { candidate, teamSkillGaps, hackathonTitle } = req.body;
 
-    if (!process.env.GEMINI_API_KEY) {
+    const ai = getAiClient();
+    if (!ai) {
       return res.json({
         analysis: `${candidate.name} brings strong verified skills in ${candidate.skills.map((s: any) => s.name).join(', ')}. They fit well with the missing roles in your team for ${hackathonTitle}.`
       });
@@ -1064,6 +1077,7 @@ async function startServer() {
   console.log(`Auth: JWT sessions enabled (expires in ${JWT_EXPIRES_IN}). DEMO_MODE=${DEMO_MODE ? "true" : "false"}`);
 
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
