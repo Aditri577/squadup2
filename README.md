@@ -1,20 +1,43 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 🚀 SquadUP
 
-# Run and deploy your AI Studio app
+SquadUP is an AI-powered team-building and collaboration platform designed specifically for hackathon participants and developers. Stop searching for teammates randomly—let AI find the perfect squad for your next big project!
 
-This contains everything you need to run your app locally.
+## ✨ Features
 
-View your app in AI Studio: https://ai.studio/apps/255a701f-8a32-4124-8009-edf59b6315a0
+* **🧠 AI Squad Recommender:** Powered by Google's Gemini 1.5 Flash, our AI analyzes skills, roles, and project needs to recommend the perfect teammates.
+* **🤝 Intelligent Teammate Discovery:** Browse and filter candidates based on specific hackathons, technical roles, and verified skills.
+* **🏆 Skill Assessments & Badges:** Prove your expertise through technical assessments and earn verified badges on your profile.
+* **💡 AI Pitch Generator:** Stuck on an idea? Use the built-in AI Pitch Generator to brainstorm and draft your hackathon submission.
+* **🛠 Integrated Workspace:** Manage your project with an in-built Kanban Board and collaborate seamlessly in the Team Workspace.
+* **💬 Team Chat Simulator:** Communicate effectively with your matched team members.
+* **📊 Global Leaderboard:** Compete with other developers and see where you rank based on hackathon wins and verified skills.
 
-## Run Locally
+## 🛠️ Tech Stack
 
-**Prerequisites:**  Node.js
+**Frontend:**
+* React 19
+* Vite
+* Tailwind CSS v4
+* Framer Motion (for smooth animations)
+* Lucide React (Icons)
 
+**Backend & AI:**
+* Node.js & Express.js
+* Google Gemini API (`gemini-1.5-flash` model)
+* Firebase (Authentication & Database)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🚀 Getting Started
+
+Follow these steps to run SquadUP on your local machine.
+
+### Prerequisites
+* Node.js (v18 or higher)
+* A Firebase Project (for Auth/DB)
+* Google Gemini API Key
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/your-username/squadup-platform.git
+   cd squadup-platform
