@@ -39,15 +39,33 @@ export interface AntiCheatLog {
     | 'FULLSCREEN_EXIT'
     | 'CAMERA_OFF'
     | 'MIC_MUTED'
+    | 'FACE_LOOK_AWAY'
+    | 'VOICE_DISCUSSION_DETECTED'
+    | 'DEVTOOLS_ATTEMPT'
     | 'PROCTORING_TERMINATED';
   message: string;
   severity: 'low' | 'medium' | 'high';
 }
 
+export interface EmailNotification {
+  id: string;
+  type: 'registration_confirmation' | 'friend_invite' | 'team_joined';
+  to: string;
+  subject: string;
+  hackathonTitle: string;
+  teamName?: string;
+  inviteCode?: string;
+  sentAt: string;
+  status: 'sent' | 'preview';
+}
+
+export type DifficultyLevel = 'Easy' | 'Medium' | 'Advanced';
+
 export interface Question {
   id: string;
   category: SkillCategory;
   skillName: string;
+  difficulty?: DifficultyLevel;
   question: string;
   options: string[];
   correctAnswer: number; // 0-based index
@@ -69,6 +87,7 @@ export interface TestResult {
   terminationReason?: string;
   completedAt: string;
   topicBreakdown: Record<string, { correct: number; total: number }>;
+  difficultyBreakdown?: Record<DifficultyLevel, { correct: number; total: number }>;
   antiCheatLogs: AntiCheatLog[];
 }
 
@@ -125,6 +144,7 @@ export interface Team {
   leaderId: string;
   members: TeamMember[];
   lookingForRoles: UserRole[];
+  inviteCode?: string;
   projectIdea?: {
     title: string;
     description: string;
@@ -163,6 +183,8 @@ export interface Hackathon {
   location: string;
   tags: string[];
   prizes: string;
+  websiteUrl?: string;
+  source?: 'devfolio' | 'custom';
 }
 
 export interface AIProjectIdea {

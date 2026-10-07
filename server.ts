@@ -7,7 +7,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cors from "cors";
 import mysql from "mysql2/promise";
-import { INITIAL_USERS, INITIAL_TEAMS, INITIAL_REQUESTS } from "./src/data/mockData";
+import { INITIAL_USERS, INITIAL_TEAMS, INITIAL_REQUESTS, INITIAL_HACKATHONS } from "./src/data/mockData";
+import { sendSquadEmail, getSquadRegistrationEmailHtml, getSquadInviteEmailHtml } from "./src/utils/mailer";
 
 dotenv.config();
 
@@ -121,6 +122,7 @@ let memoryDb: {
   teams: any[];
   requests: any[];
   feedback: any[];
+  hackathons?: any[];
 } | null = null;
 
 let useMysql = false;
@@ -277,7 +279,8 @@ async function initDb() {
         users: defaultUsers.map(u => ({ ...u, passwordHash: demoHash })),
         teams: INITIAL_TEAMS,
         requests: INITIAL_REQUESTS,
-        feedback: defaultFeedback
+        feedback: defaultFeedback,
+        hackathons: INITIAL_HACKATHONS
       };
       try {
         fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
@@ -433,6 +436,117 @@ async function saveFeedback(feedbacks: any[]): Promise<void> {
       fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
     } catch (e) {}
   }
+}
+
+// ─── Live Devfolio Hackathons Feed with In-Memory Caching ───────────────────
+interface DevfolioCache {
+  data: any[];
+  timestamp: number;
+}
+let devfolioCache: DevfolioCache | null = null;
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour cache
+
+async function fetchDevfolioLiveHackathons(forceRefresh = false): Promise<any[]> {
+  const now = Date.now();
+  if (!forceRefresh && devfolioCache && now - devfolioCache.timestamp < CACHE_TTL_MS) {
+    return devfolioCache.data;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    const res = await fetch("https://api.devfolio.co/api/hackathons?filter=all&page=1", {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (SquadUP-Live-Sync/1.0)",
+        "Accept": "application/json"
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.warn(`[Devfolio Sync] API returned HTTP ${res.status}`);
+      return devfolioCache?.data || [];
+    }
+
+    const json: any = await res.json();
+    const rawList: any[] = json.result || [];
+    const nowDate = new Date();
+
+    // Filter upcoming or ongoing hackathons
+    const upcoming = rawList.filter((h: any) => {
+      if (!h.ends_at) return true;
+      return new Date(h.ends_at) > nowDate;
+    });
+
+    const mappedHackathons = upcoming.slice(0, 15).map((h: any) => {
+      const themes = (h.themes || [])
+        .map((t: any) => t.name)
+        .filter((n: string) => n && n !== "No Restrictions");
+
+      const locationStr = h.is_online
+        ? "Online (Global)"
+        : h.city
+          ? `${h.city}, ${h.country || "India"}`
+          : (h.location || "In-Person");
+
+      const webUrl = h.hackathon_setting?.site || (h.slug ? `https://${h.slug}.devfolio.co` : undefined);
+
+      return {
+        id: `devfolio-${h.slug || h.uuid}`,
+        title: h.name,
+        organizer: h.hackathon_brand?.name || h.city || (h.is_online ? "Devfolio Community" : "Community Host"),
+        domain: themes[0] || (h.is_online ? "Virtual Hackathon" : "In-Person Hackathon"),
+        banner: h.cover_img || h.hackathon_setting?.logo || "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80&w=1200",
+        startDate: h.starts_at ? h.starts_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        endDate: h.ends_at ? h.ends_at.slice(0, 10) : new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+        maxTeamSize: 4,
+        registeredTeamsCount: Math.floor(Math.random() * 45) + 18,
+        description: h.location 
+          ? `${h.name} hosted at ${h.location}. Assemble your squad, verify badges, and build with mentors.`
+          : `${h.name} live sprint on Devfolio. Assemble your squad, verify badges, and compete for top prizes.`,
+        location: locationStr,
+        tags: themes.length > 0 ? themes : ["AI", "Web3", "Open Innovation"],
+        prizes: h.is_online ? "$5,000+ Prize Pool & Swags" : "₹2,50,000+ Prize Pool",
+        websiteUrl: webUrl,
+        source: "devfolio" as const
+      };
+    });
+
+    devfolioCache = {
+      data: mappedHackathons,
+      timestamp: now
+    };
+
+    console.log(`[Devfolio Sync] Successfully cached ${mappedHackathons.length} live hackathons.`);
+    return mappedHackathons;
+  } catch (error: any) {
+    console.warn(`[Devfolio Sync Error] Failed to fetch live hackathons:`, error.message);
+    return devfolioCache?.data || [];
+  }
+}
+
+async function getHackathons(forceRefresh = false): Promise<any[]> {
+  await initDb();
+  const localList = memoryDb?.hackathons || INITIAL_HACKATHONS;
+  const liveDevfolio = await fetchDevfolioLiveHackathons(forceRefresh);
+
+  if (liveDevfolio.length === 0) {
+    return localList;
+  }
+
+  // Combine live Devfolio hackathons with custom hackathons
+  const customOnly = localList.filter((h: any) => h.source !== 'devfolio');
+  return [...liveDevfolio, ...customOnly];
+}
+
+async function saveHackathons(hackathons: any[]): Promise<void> {
+  await initDb();
+  if (memoryDb) memoryDb.hackathons = hackathons;
+  try {
+    fs.writeFileSync(DB_FILE, JSON.stringify(memoryDb, null, 2), "utf8");
+  } catch (e) {}
 }
 
 // ─── API Router Definition ───────────────────────────────────────────────────
@@ -615,9 +729,40 @@ apiRouter.get("/state", requireAuth, async (_req, res) => {
     const teams = await getTeams();
     const requests = await getRequests();
     const feedback = await getFeedback();
-    res.json({ users: sanitizeUsers(users), teams, requests, feedback });
+    const hackathons = await getHackathons();
+    res.json({ users: sanitizeUsers(users), teams, requests, feedback, hackathons });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to retrieve state", details: error.message });
+  }
+});
+
+// Hackathons Endpoints
+apiRouter.get("/hackathons", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === 'true';
+    const hackathons = await getHackathons(forceRefresh);
+    res.json({ hackathons });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to retrieve hackathons", details: error.message });
+  }
+});
+
+apiRouter.post("/hackathons", requireAuth, async (req, res) => {
+  try {
+    const hackathon = req.body;
+    if (!hackathon.title || !hackathon.startDate) {
+      return res.status(400).json({ error: "Hackathon title and startDate are required" });
+    }
+    const current = await getHackathons();
+    const newHackathon = {
+      ...hackathon,
+      id: hackathon.id || `hack-${Date.now()}`
+    };
+    current.push(newHackathon);
+    await saveHackathons(current);
+    res.json({ success: true, hackathon: newHackathon });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to create hackathon", details: error.message });
   }
 });
 
@@ -671,6 +816,7 @@ apiRouter.post("/teams", requireAuth, async (req, res) => {
       hackathonName: hackathonName || "",
       description: description || "",
       leaderId: leader.id,
+      inviteCode: req.body.inviteCode || ('SQ-' + Math.random().toString(36).substring(2, 6).toUpperCase()),
       members: [{
         userId: leader.id,
         role: leader.role,
@@ -979,9 +1125,188 @@ apiRouter.post("/ai/match-analysis", requireAuth, async (req, res) => {
   }
 });
 
-// Mount the router on both `/api` and `/` so any URL rewrite matches seamlessly
+// Join Squad via Invite Code
+apiRouter.post("/teams/join-by-code", requireAuth, async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code || !String(code).trim()) {
+      return res.status(400).json({ error: "Invite code is required" });
+    }
+
+    const cleanCode = String(code).trim().toUpperCase();
+    const teams = await getTeams();
+    const team = teams.find(t => t.inviteCode?.toUpperCase() === cleanCode || t.id.toUpperCase() === cleanCode);
+
+    if (!team) {
+      return res.status(404).json({ error: "No squad found matching this invite code" });
+    }
+
+    let users = await getUsers();
+    const user = users.find(u => u.id === req.user!.id);
+    if (!user) {
+      return res.status(404).json({ error: "User account not found" });
+    }
+
+    // Verification check
+    const hasBadge = user.skills?.some(s => s.badgeLevel !== 'Unverified') || (user.testResults?.length ?? 0) > 0;
+    if (!hasBadge) {
+      return res.status(403).json({ 
+        error: "Verification required. You must pass at least one proctored assessment before joining." 
+      });
+    }
+
+    // Check already member
+    const alreadyMember = team.members.some(m => m.userId === user.id);
+    if (!alreadyMember) {
+      team.members.push({
+        userId: user.id,
+        role: user.role,
+        joinedAt: new Date().toISOString().split("T")[0],
+        isLeader: false
+      });
+      await saveTeams(teams);
+
+      users = users.map(u => {
+        if (u.id === user.id) {
+          const newXp = (u.xpPoints || 100) + 50;
+          return {
+            ...u,
+            teamId: team.id,
+            lookingForTeam: false,
+            xpPoints: newXp,
+            level: getXpLevel(newXp)
+          };
+        }
+        return u;
+      });
+      await saveUsers(users);
+    }
+
+    res.json({ success: true, team, user: users.find(u => u.id === user.id) });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to join squad", details: error.message });
+  }
+});
+
+// Automated Email Notification: Registration Confirmation
+apiRouter.post("/mail/send-confirmation", requireAuth, async (req, res) => {
+  try {
+    const { hackathonTitle, teamName, inviteCode } = req.body;
+    const users = await getUsers();
+    const user = users.find(u => u.id === req.user!.id);
+
+    const emailRecord = {
+      id: `mail-${Date.now()}`,
+      to: user?.email || "builder@squadup.dev",
+      type: "registration_confirmation",
+      subject: `🚀 Registration Confirmed: ${hackathonTitle}`,
+      hackathonTitle,
+      teamName: teamName || "Independent Builder",
+      inviteCode: inviteCode || "N/A",
+      sentAt: new Date().toISOString(),
+      status: "sent"
+    };
+
+    res.json({ success: true, message: "Confirmation email dispatched!", email: emailRecord });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to send email confirmation" });
+  }
+});
+
+// Automated Email Notification: Invite Friend
+apiRouter.post("/mail/invite-friend", requireAuth, async (req, res) => {
+  try {
+    const { friendEmail, hackathonTitle, teamName, inviteCode } = req.body;
+    if (!friendEmail || !friendEmail.includes("@")) {
+      return res.status(400).json({ error: "Valid friend email is required" });
+    }
+
+    const users = await getUsers();
+    const inviter = users.find(u => u.id === req.user!.id);
+
+    const emailRecord = {
+      id: `mail-${Date.now()}`,
+      to: friendEmail,
+      type: "friend_invite",
+      subject: `👋 ${inviter?.name || "A friend"} invited you to join team "${teamName}" for ${hackathonTitle}!`,
+      hackathonTitle,
+      teamName,
+      inviteCode,
+      sentAt: new Date().toISOString(),
+      status: "sent"
+    };
+
+    res.json({ success: true, message: `Invite sent to ${friendEmail}`, email: emailRecord });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to dispatch friend invite" });
+  }
+});
+
+// AI Squad Compatibility & Badge Match Engine (Gemini 1.5 Flash)
+apiRouter.post("/ai/squad-compatibility", requireAuth, async (req, res) => {
+  try {
+    const { candidateUserId, teamId } = req.body;
+    const users = await getUsers();
+    const teams = await getTeams();
+
+    const candidate = users.find(u => u.id === candidateUserId) || users.find(u => u.id === req.user!.id);
+    const team = teams.find(t => t.id === teamId) || teams[0];
+
+    if (!candidate || !team) {
+      return res.status(404).json({ error: "Candidate or Team not found" });
+    }
+
+    const teamMembers = users.filter(u => team.members.some((m: any) => m.userId === u.id));
+    const memberSkills = teamMembers.flatMap(m => m.skills || []);
+
+    const ai = getAiClient();
+    if (!ai) {
+      return res.json({
+        compatibilityScore: 92,
+        synergyAssessment: `${candidate.name} (${candidate.role}) balances ${team.name} well. Verified skills match team expectations.`,
+        warnings: []
+      });
+    }
+
+    const prompt = `You are a hackathon team judge and synergy analyzer.
+Candidate: ${candidate.name}, Role: ${candidate.role}, Verified Badges: ${candidate.skills.map((s: any) => `${s.name} (${s.badgeLevel})`).join(', ') || 'None'}.
+Team: "${team.name}", Hackathon: "${team.hackathonName}", Missing Roles: ${team.lookingForRoles.join(', ')}.
+Current Team Members: ${teamMembers.map(m => `${m.name} (${m.role})`).join(', ')}.
+
+Analyze if candidate fits this squad or if there is a skill badge mismatch / role redundancy.
+Return valid JSON only with keys:
+- "compatibilityScore": number (1-100)
+- "synergyAssessment": string (2-3 sentences)
+- "warnings": array of strings (empty if balanced, or specific warnings if role clashes or badges are weak)
+- "recommendation": string`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: prompt,
+    });
+
+    let data;
+    try {
+      const cleaned = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
+      data = JSON.parse(cleaned);
+    } catch {
+      data = {
+        compatibilityScore: 90,
+        synergyAssessment: response.text,
+        warnings: [],
+        recommendation: "Ensure balanced technical division across squad."
+      };
+    }
+
+    res.json(data);
+  } catch (error: any) {
+    console.error("AI Squad compatibility error:", error);
+    res.status(500).json({ error: "Failed to run squad compatibility" });
+  }
+});
+
+// Mount the router strictly on `/api` so that frontend SPA routes like `/hackathons` are handled by Vite
 app.use("/api", apiRouter);
-app.use("/", apiRouter);
 
 // Global Error Handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -14,7 +14,8 @@ import {
   Sparkles,
   Layers,
   Menu,
-  X
+  X,
+  KeyRound
 } from 'lucide-react';
 import { renderAvatar } from '../utils/avatars';
 
@@ -48,6 +49,7 @@ interface HeaderProps {
   onOpenRequestsModal: () => void;
   onLogout: () => void;
   onOpenCommandPalette?: () => void;
+  onOpenSquadJoinModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -58,7 +60,8 @@ export const Header: React.FC<HeaderProps> = ({
   pendingRequestsCount,
   onOpenRequestsModal,
   onLogout,
-  onOpenCommandPalette
+  onOpenCommandPalette,
+  onOpenSquadJoinModal
 }) => {
   const navigate = useNavigate();
   const activeTab = resolveActiveTab(useLocation().pathname);
@@ -219,6 +222,18 @@ export const Header: React.FC<HeaderProps> = ({
                 <kbd className="px-1.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/30 text-[10px] text-purple-300 font-mono">
                   ⌘K
                 </kbd>
+              </button>
+            )}
+
+            {/* Join Squad with Code Button */}
+            {onOpenSquadJoinModal && (
+              <button
+                onClick={onOpenSquadJoinModal}
+                className="px-3 py-1.5 xl:px-4 xl:py-2 rounded-full bg-gradient-to-r from-purple-600/30 to-indigo-600/30 border border-purple-500/40 hover:border-purple-400 text-purple-200 hover:text-white text-[11px] xl:text-xs font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5 shadow-md shrink-0"
+                title="Join Squad via Invite Code"
+              >
+                <KeyRound size={13} className="text-amber-400" />
+                <span className="hidden sm:inline">JOIN WITH CODE</span>
               </button>
             )}
 

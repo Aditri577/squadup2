@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, SkillCategory, Question, TestResult, AntiCheatLog, BadgeLevel } from '../types';
+import { User, SkillCategory, Question, TestResult, AntiCheatLog, BadgeLevel, DifficultyLevel } from '../types';
 import { getRandomQuestions } from '../data/questionBank';
 import { BadgePill } from './BadgePill';
-import { useProctoring } from '../utils/useProctoring';
+import { useProctoring, useFaceTracking } from '../utils/useProctoring';
 import confetti from 'canvas-confetti';
 import { useToast } from './Toast';
+import { ShareBadgeModal } from './ShareBadgeModal';
 import { 
   Award, 
   ShieldAlert, 
@@ -26,7 +27,10 @@ import {
   VideoOff,
   Mic,
   MicOff,
-  Ban
+  Ban,
+  ScanFace,
+  Volume2,
+  Share2
 } from 'lucide-react';
 
 interface AssessmentViewProps {
@@ -37,7 +41,11 @@ interface AssessmentViewProps {
 // Three strikes and the session auto-submits with a termination flag.
 const MAX_VIOLATIONS = 3;
 // Events serious enough to cost a strike; the rest are logged only.
-const STRIKE_EVENTS: AntiCheatLog['event'][] = ['TAB_SWITCH', 'FULLSCREEN_EXIT', 'CAMERA_OFF', 'MIC_MUTED'];
+const STRIKE_EVENTS: AntiCheatLog['event'][] = [
+  'TAB_SWITCH', 'FULLSCREEN_EXIT', 'CAMERA_OFF', 'MIC_MUTED',
+  'FACE_LOOK_AWAY', 'VOICE_DISCUSSION_DETECTED', 'DEVTOOLS_ATTEMPT'
+];
+
 
 const CATEGORIES: { name: SkillCategory; desc: string; icon: string }[] = [
   { name: 'Frontend (React/JS)', desc: 'React 18+, Virtual DOM, Hooks, ES6, State & Async JS', icon: '⚛️' },
@@ -69,9 +77,12 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
 
   // Result state
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Hidden offscreen canvas for face-tracking frame analysis
+  const faceCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Event listeners are registered once per session, so they read the live values
   // through refs instead of the stale render closure they were created in.
@@ -125,18 +136,27 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
     }
   };
 
-  // Camera + microphone presence monitoring (live only, never recorded)
+  // Camera + microphone presence monitoring + voice detection (live only, never recorded)
   const proctoring = useProctoring({
     active: testState === 'active',
     onViolation: (kind, message) => logAntiCheatEvent(kind, message, 'high')
   });
-  const { stream, cameraOn, micOn, permissionError, clearPermissionError } = proctoring;
+  const { stream, cameraOn, micOn, permissionError, clearPermissionError, audioLevel, voiceDetected } = proctoring;
+
+  // Face & gaze tracking via canvas frame analysis
+  const { faceStatus } = useFaceTracking(
+    videoRef,
+    faceCanvasRef,
+    testState === 'active',
+    (kind, message) => logAntiCheatEvent(kind, message, 'high')
+  );
 
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
     }
   }, [stream, testState]);
+
 
   // anti-cheat event listeners setup when test is ACTIVE
   useEffect(() => {
@@ -161,20 +181,80 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
       }
     };
 
-    // 4. Prevent Copy / Paste attempt
+    // 4. Prevent Copy / Paste / Cut attempt
     const handleCopyPaste = (e: ClipboardEvent) => {
       e.preventDefault();
       logAntiCheatEvent('COPY_PASTE_ATTEMPT', 'Copy/Paste action intercepted and blocked by security monitor.', 'medium');
     };
 
-    // 5. Fullscreen change detection
+    // 5. Fullscreen change detection — prompt re-entry immediately
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement) {
         setIsFullscreen(false);
         logAntiCheatEvent('FULLSCREEN_EXIT', 'Fullscreen mode exited by candidate.', 'high');
+        // Attempt auto re-entry after 1.5s
+        setTimeout(() => {
+          if (testStateRef.current === 'active' && containerRef.current && !document.fullscreenElement) {
+            containerRef.current.requestFullscreen?.().catch(() => {});
+          }
+        }, 1500);
       } else {
         setIsFullscreen(true);
       }
+    };
+
+    // 6. Block DevTools keyboard shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U, Cmd+Option+I)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      const shift = e.shiftKey;
+      const alt = e.altKey;
+      const key = e.key;
+
+      // F12 — DevTools
+      if (key === 'F12') {
+        e.preventDefault();
+        logAntiCheatEvent('DEVTOOLS_ATTEMPT', 'DevTools shortcut (F12) blocked during proctored session.', 'high');
+        return;
+      }
+      // Ctrl+Shift+I / Ctrl+Shift+J / Ctrl+Shift+C — DevTools
+      if (ctrl && shift && (key === 'I' || key === 'i' || key === 'J' || key === 'j' || key === 'C' || key === 'c')) {
+        e.preventDefault();
+        logAntiCheatEvent('DEVTOOLS_ATTEMPT', 'DevTools shortcut (Ctrl+Shift+I/J/C) blocked during proctored session.', 'high');
+        return;
+      }
+      // Cmd+Option+I — DevTools on Mac
+      if (ctrl && alt && (key === 'I' || key === 'i')) {
+        e.preventDefault();
+        logAntiCheatEvent('DEVTOOLS_ATTEMPT', 'DevTools shortcut (Cmd+Option+I) blocked during proctored session.', 'high');
+        return;
+      }
+      // Ctrl+U — View source
+      if (ctrl && (key === 'U' || key === 'u')) {
+        e.preventDefault();
+        logAntiCheatEvent('DEVTOOLS_ATTEMPT', 'View Source shortcut (Ctrl+U) blocked during proctored session.', 'medium');
+        return;
+      }
+      // Ctrl+C / Ctrl+V / Ctrl+A — Copy/Paste/Select All
+      if (ctrl && (key === 'c' || key === 'C' || key === 'v' || key === 'V' || key === 'a' || key === 'A')) {
+        e.preventDefault();
+        logAntiCheatEvent('COPY_PASTE_ATTEMPT', 'Keyboard copy/paste shortcut blocked during proctored session.', 'medium');
+        return;
+      }
+      // Alt+Tab — Window switch (log only, can't fully prevent)
+      if (alt && key === 'Tab') {
+        logAntiCheatEvent('TAB_SWITCH', 'Alt+Tab window switch attempt detected.', 'high');
+      }
+    };
+
+    // 7. Block right-click context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      logAntiCheatEvent('COPY_PASTE_ATTEMPT', 'Right-click context menu blocked during proctored session.', 'low');
+    };
+
+    // 8. Block text selection (CSS user-select is not enough)
+    const handleSelectStart = (e: Event) => {
+      e.preventDefault();
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -182,7 +262,11 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
     document.addEventListener('mouseleave', handleMouseLeave);
     document.addEventListener('copy', handleCopyPaste);
     document.addEventListener('paste', handleCopyPaste);
+    document.addEventListener('cut', handleCopyPaste);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('selectstart', handleSelectStart);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -190,9 +274,14 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
       document.removeEventListener('mouseleave', handleMouseLeave);
       document.removeEventListener('copy', handleCopyPaste);
       document.removeEventListener('paste', handleCopyPaste);
+      document.removeEventListener('cut', handleCopyPaste);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('selectstart', handleSelectStart);
     };
   }, [testState]);
+
 
   // Countdown timer effect
   useEffect(() => {
@@ -282,6 +371,11 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
 
     let correctCount = 0;
     const topicBreakdown: Record<string, { correct: number; total: number }> = {};
+    const difficultyBreakdown: Record<DifficultyLevel, { correct: number; total: number }> = {
+      Easy: { correct: 0, total: 0 },
+      Medium: { correct: 0, total: 0 },
+      Advanced: { correct: 0, total: 0 }
+    };
 
     activeQuestions.forEach((q, idx) => {
       const selected = finalAnswers[idx];
@@ -294,6 +388,13 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
       }
       topicBreakdown[topic].total++;
       if (isCorrect) topicBreakdown[topic].correct++;
+
+      const diff: DifficultyLevel = q.difficulty || (idx < 6 ? 'Easy' : idx < 14 ? 'Medium' : 'Advanced');
+      if (!difficultyBreakdown[diff]) {
+        difficultyBreakdown[diff] = { correct: 0, total: 0 };
+      }
+      difficultyBreakdown[diff].total++;
+      if (isCorrect) difficultyBreakdown[diff].correct++;
     });
 
     const scorePercent = Math.round((correctCount / activeQuestions.length) * 100);
@@ -346,6 +447,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
       terminationReason: terminated ? (opts.reason || 'Proctoring violation limit reached.') : undefined,
       completedAt: new Date().toISOString(),
       topicBreakdown,
+      difficultyBreakdown,
       antiCheatLogs: finalLogs
     };
 
@@ -684,8 +786,11 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
             </div>
           )}
 
-          {/* Live Self-View — monitored in-browser only, never recorded or uploaded */}
-          <div className="fixed bottom-4 right-4 z-50 w-40 sm:w-48 rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-2xl shadow-black/60">
+          {/* Hidden Canvas for Face & Gaze Tracking Frame Analysis */}
+          <canvas ref={faceCanvasRef} className="hidden" width={320} height={240} />
+
+          {/* Live Self-View & AI Proctor Telemetry — monitored in-browser only, never recorded */}
+          <div className="fixed bottom-4 right-4 z-50 w-44 sm:w-56 rounded-2xl overflow-hidden border border-purple-500/40 bg-slate-950 shadow-2xl shadow-purple-950/50 backdrop-blur-xl">
             <div className="relative">
               <video
                 ref={videoRef}
@@ -694,42 +799,165 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
                 muted
                 className="w-full aspect-[4/3] object-cover bg-slate-950 -scale-x-100"
               />
-              <span className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/60 backdrop-blur text-[10px] font-bold uppercase tracking-wider text-white">
+              
+              {/* Live Proctor Indicator */}
+              <div className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur text-[9px] font-bold uppercase tracking-wider text-white">
                 <span className={`w-1.5 h-1.5 rounded-full ${cameraOn && micOn ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
-                Live Proctor
-              </span>
+                AI Proctor Active
+              </div>
+
+              {/* Face Status Pill */}
+              <div className="absolute bottom-2 left-2 right-2">
+                <div className={`px-2 py-1 rounded-lg backdrop-blur-md text-[10px] font-bold flex items-center justify-between border ${
+                  faceStatus === 'locked'
+                    ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300'
+                    : faceStatus === 'away'
+                    ? 'bg-rose-950/80 border-rose-500/50 text-rose-300 animate-pulse'
+                    : 'bg-black/70 border-white/10 text-slate-300'
+                }`}>
+                  <span className="flex items-center gap-1">
+                    <ScanFace size={11} className={faceStatus === 'locked' ? 'text-emerald-400' : 'text-rose-400'} />
+                    {faceStatus === 'locked' ? 'Face Locked' : faceStatus === 'away' ? 'Looking Away!' : 'Calibrating Face...'}
+                  </span>
+                  <span className="text-[8px] uppercase tracking-wider opacity-80">
+                    {faceStatus === 'locked' ? '100% Focused' : faceStatus === 'away' ? 'Warning' : 'Sync'}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900 border-t border-slate-800 text-[10px] font-semibold text-slate-400">
-              <span className="flex items-center gap-1">
-                {cameraOn ? <Video size={11} className="text-emerald-400" /> : <VideoOff size={11} className="text-rose-400" />}
-                Cam
-              </span>
-              <span className="flex items-center gap-1">
-                {micOn ? <Mic size={11} className="text-emerald-400" /> : <MicOff size={11} className="text-rose-400" />}
-                Mic
-              </span>
+
+            {/* Audio & Mic Live Telemetry Bar */}
+            <div className="p-2.5 bg-slate-900 border-t border-slate-800 space-y-1.5 text-[10px]">
+              <div className="flex items-center justify-between font-semibold text-slate-300">
+                <span className="flex items-center gap-1">
+                  <Volume2 size={11} className={voiceDetected ? "text-rose-400 animate-bounce" : "text-purple-400"} />
+                  Mic Telemetry
+                </span>
+                <span className={`text-[9px] font-bold ${voiceDetected ? "text-rose-400 animate-pulse" : "text-emerald-400"}`}>
+                  {voiceDetected ? "⚠️ Voice Detected" : "Quiet / Normal"}
+                </span>
+              </div>
+
+              {/* Real-time Audio Level Meter */}
+              <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden border border-white/5">
+                <div 
+                  className={`h-full transition-all duration-150 ${
+                    voiceDetected ? 'bg-rose-500' : audioLevel > 0.02 ? 'bg-amber-400' : 'bg-emerald-400'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(8, audioLevel * 300))}%` }}
+                ></div>
+              </div>
+
+              <div className="flex items-center justify-between text-[9px] text-slate-400 pt-0.5">
+                <span className="flex items-center gap-1">
+                  {cameraOn ? <Video size={10} className="text-emerald-400" /> : <VideoOff size={10} className="text-rose-400" />}
+                  Camera Live
+                </span>
+                <span className="flex items-center gap-1">
+                  {micOn ? <Mic size={10} className="text-emerald-400" /> : <MicOff size={10} className="text-rose-400" />}
+                  Mic Monitored
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Main Question Card */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-xl space-y-6">
             
-            {/* Header: Progress bar & Question number */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
-                <span>Question {currentIndex + 1} of {questions.length}</span>
-                <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-[11px]">
-                  Topic: {questions[currentIndex].topic}
-                </span>
-              </div>
+            {/* 3-Stage Progressive Difficulty Flow (Easy -> Medium -> Advanced) */}
+            {(() => {
+              const currentQ = questions[currentIndex];
+              const currentDifficulty: DifficultyLevel = currentQ?.difficulty || (currentIndex < 6 ? 'Easy' : currentIndex < 14 ? 'Medium' : 'Advanced');
+              return (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-3 gap-2 text-[11px] font-bold">
+                    <div className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                      currentDifficulty === 'Easy'
+                        ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300 ring-1 ring-emerald-500/30'
+                        : currentIndex >= 6
+                          ? 'bg-emerald-950/20 border-emerald-500/20 text-emerald-400/60'
+                          : 'bg-slate-800/40 border-slate-700/50 text-slate-500'
+                    }`}>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${
+                          currentDifficulty === 'Easy' ? 'bg-emerald-400 animate-pulse' : currentIndex >= 6 ? 'bg-emerald-500' : 'bg-slate-600'
+                        }`} />
+                        Stage 1: Easy
+                      </span>
+                      <span className="text-[10px] opacity-75">Q1–6</span>
+                    </div>
 
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-indigo-600 h-full transition-all duration-300"
-                  style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
-                ></div>
-              </div>
-            </div>
+                    <div className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                      currentDifficulty === 'Medium'
+                        ? 'bg-amber-500/15 border-amber-500/50 text-amber-300 ring-1 ring-amber-500/30'
+                        : currentIndex >= 14
+                          ? 'bg-amber-950/20 border-amber-500/20 text-amber-400/60'
+                          : 'bg-slate-800/40 border-slate-700/50 text-slate-500'
+                    }`}>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${
+                          currentDifficulty === 'Medium' ? 'bg-amber-400 animate-pulse' : currentIndex >= 14 ? 'bg-amber-500' : 'bg-slate-600'
+                        }`} />
+                        Stage 2: Medium
+                      </span>
+                      <span className="text-[10px] opacity-75">Q7–14</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-xl border flex items-center justify-between transition-all ${
+                      currentDifficulty === 'Advanced'
+                        ? 'bg-purple-500/15 border-purple-500/50 text-purple-300 ring-1 ring-purple-500/30'
+                        : 'bg-slate-800/40 border-slate-700/50 text-slate-500'
+                    }`}>
+                      <span className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${
+                          currentDifficulty === 'Advanced' ? 'bg-purple-400 animate-pulse' : 'bg-slate-600'
+                        }`} />
+                        Stage 3: Advanced
+                      </span>
+                      <span className="text-[10px] opacity-75">Q15–20</span>
+                    </div>
+                  </div>
+
+                  {/* Header: Progress bar, Difficulty badge & Question count */}
+                  <div className="space-y-2 pt-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-2">
+                        <span>Question {currentIndex + 1} of {questions.length}</span>
+                        {/* Live Difficulty Pill */}
+                        <span className={`px-2.5 py-0.5 rounded-full border text-[11px] font-bold flex items-center gap-1 ${
+                          currentDifficulty === 'Easy'
+                            ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                            : currentDifficulty === 'Medium'
+                              ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                              : 'bg-purple-500/15 border-purple-500/30 text-purple-400'
+                        }`}>
+                          {currentDifficulty === 'Easy' && <Zap size={11} />}
+                          {currentDifficulty === 'Medium' && <Sparkles size={11} />}
+                          {currentDifficulty === 'Advanced' && <Award size={11} />}
+                          {currentDifficulty}
+                        </span>
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold text-[11px]">
+                        Topic: {questions[currentIndex].topic}
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-300 ${
+                          currentDifficulty === 'Easy'
+                            ? 'bg-emerald-500'
+                            : currentDifficulty === 'Medium'
+                              ? 'bg-amber-500'
+                              : 'bg-purple-500'
+                        }`}
+                        style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Question Text */}
             <div className="py-2">
@@ -865,6 +1093,52 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
               </p>
             </div>
 
+            {/* Progressive Difficulty Tier Performance (Easy -> Medium -> Advanced) */}
+            {testResult.difficultyBreakdown && (
+              <div className="text-left space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-purple-400" />
+                    Progressive Difficulty Mastery Diagnostic
+                  </h4>
+                  <span className="text-[11px] text-slate-500 font-semibold">Stage 1 (Easy) ➔ Stage 2 (Medium) ➔ Stage 3 (Advanced)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(['Easy', 'Medium', 'Advanced'] as DifficultyLevel[]).map((level) => {
+                    const data = testResult.difficultyBreakdown?.[level] || { correct: 0, total: 0 };
+                    const percent = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+                    const tierStyles = 
+                      level === 'Easy' 
+                        ? { bg: 'bg-emerald-500/10 border-emerald-500/30', text: 'text-emerald-400', bar: 'bg-emerald-500', label: 'Easy Tier', desc: 'Core APIs & Foundational Syntax' }
+                        : level === 'Medium'
+                          ? { bg: 'bg-amber-500/10 border-amber-500/30', text: 'text-amber-400', bar: 'bg-amber-500', label: 'Medium Tier', desc: 'State Architecture & Async Logic' }
+                          : { bg: 'bg-purple-500/10 border-purple-500/30', text: 'text-purple-400', bar: 'bg-purple-500', label: 'Advanced Tier', desc: 'Engine Internals & Deep Optimization' };
+
+                    return (
+                      <div key={level} className={`p-3.5 rounded-2xl border ${tierStyles.bg} space-y-2`}>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-200">{tierStyles.label}</span>
+                          <span className={`font-mono font-bold ${tierStyles.text}`}>
+                            {data.correct}/{data.total} ({percent}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className={`h-full ${tierStyles.bar} transition-all duration-500`}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium">
+                          {tierStyles.desc}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Topic Breakdown */}
             <div className="text-left space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -940,8 +1214,16 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
               </button>
 
               <button
+                onClick={() => setShowShareModal(true)}
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-purple-500/20 cursor-pointer"
+              >
+                <Share2 size={15} />
+                <span>Share Credential Card</span>
+              </button>
+
+              <button
                 onClick={() => (testResult.terminated ? startPreparation(testResult.category) : enterState('idle'))}
-                className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center gap-2"
+                className="px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center gap-2 cursor-pointer"
               >
                 <RotateCcw size={15} />
                 <span>{testResult.terminated ? 'Retake This Assessment' : 'Take Another Assessment'}</span>
@@ -950,6 +1232,20 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
 
           </div>
         </div>
+      )}
+
+      {/* Share Verified Credential Modal */}
+      {showShareModal && testResult && (
+        <ShareBadgeModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          user={currentUser}
+          skillName={testResult.category}
+          badgeLevel={testResult.badgeLevel}
+          scorePercent={testResult.scorePercent}
+          completedAt={testResult.completedAt}
+          warningCount={testResult.warningCount}
+        />
       )}
 
     </div>

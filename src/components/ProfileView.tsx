@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Skill, TestResult, UserRole, SkillCategory } from '../types';
+import { User, Skill, TestResult, UserRole, SkillCategory, BadgeLevel } from '../types';
 import { BadgePill } from './BadgePill';
 import { useToast } from './Toast';
+import { ShareBadgeModal } from './ShareBadgeModal';
 import { 
   UserCheck, 
   Award, 
@@ -22,7 +23,8 @@ import {
   Plus,
   Trash2,
   Camera,
-  Sparkles
+  Sparkles,
+  Share2
 } from 'lucide-react';
 
 import { renderAvatar, CUTE_AVATARS } from '../utils/avatars';
@@ -83,6 +85,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillCategory, setNewSkillCategory] = useState<SkillCategory>('Frontend (React/JS)');
   const [newSkillRating, setNewSkillRating] = useState<number>(4);
+
+  // Share Verified Credential Modal State
+  const [shareData, setShareData] = useState<{
+    skillName: string;
+    badgeLevel: BadgeLevel;
+    scorePercent?: number;
+    completedAt?: string;
+    warningCount?: number;
+  } | null>(null);
 
   // Sync state when user prop changes
   useEffect(() => {
@@ -431,6 +442,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </span>
                 <div className="flex items-center gap-2">
                   <BadgePill level={sk.badgeLevel} scorePercent={sk.scorePercent} showScore />
+                  {sk.badgeLevel !== 'Unverified' && (
+                    <button
+                      onClick={() => setShareData({
+                        skillName: sk.name,
+                        badgeLevel: sk.badgeLevel,
+                        scorePercent: sk.scorePercent,
+                        completedAt: sk.verifiedAt
+                      })}
+                      className="p-1 rounded-lg text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/25 border border-purple-500/20 transition cursor-pointer"
+                      title="Share Verified Credential Card"
+                    >
+                      <Share2 size={13} />
+                    </button>
+                  )}
                   {isEditing && (
                     <button
                       onClick={() => handleRemoveSkill(sk.id)}
@@ -476,9 +501,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     <BadgePill level={tr.badgeLevel} scorePercent={tr.scorePercent} showScore />
                   </div>
 
-                  <span className="text-[11px] text-purple-300/70 flex items-center gap-1">
-                    <Calendar size={13} /> {new Date(tr.completedAt).toLocaleDateString()}
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      onClick={() => setShareData({
+                        skillName: tr.category,
+                        badgeLevel: tr.badgeLevel,
+                        scorePercent: tr.scorePercent,
+                        completedAt: tr.completedAt,
+                        warningCount: tr.warningCount
+                      })}
+                      className="px-2.5 py-1 rounded-xl text-purple-300 hover:text-white bg-purple-500/10 hover:bg-purple-500/25 border border-purple-500/20 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Share2 size={12} />
+                      <span>Share Card</span>
+                    </button>
+
+                    <span className="text-[11px] text-purple-300/70 flex items-center gap-1">
+                      <Calendar size={13} /> {new Date(tr.completedAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="text-xs text-purple-200/80">
@@ -537,6 +578,20 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Share Verified Credential Modal */}
+      {shareData && (
+        <ShareBadgeModal
+          isOpen={!!shareData}
+          onClose={() => setShareData(null)}
+          user={user}
+          skillName={shareData.skillName}
+          badgeLevel={shareData.badgeLevel}
+          scorePercent={shareData.scorePercent}
+          completedAt={shareData.completedAt}
+          warningCount={shareData.warningCount}
+        />
+      )}
 
     </div>
   );

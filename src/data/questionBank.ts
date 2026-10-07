@@ -6,6 +6,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-1',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Easy',
       topic: 'Hooks & State',
       question: 'What is the primary purpose of the useCallback hook in React?',
       options: [
@@ -21,6 +22,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-2',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Easy',
       topic: 'Virtual DOM',
       question: 'How does React\'s reconciliation process determine if a component needs to be re-rendered?',
       options: [
@@ -36,6 +38,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-3',
       category: 'Frontend (React/JS)',
       skillName: 'JavaScript Core',
+      difficulty: 'Easy',
       topic: 'Event Loop',
       question: 'In JavaScript\'s event loop, what is the order of execution between Microtasks and Macrotasks?',
       options: [
@@ -51,6 +54,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-4',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Easy',
       topic: 'Hooks & Lifecycle',
       question: 'When does the cleanup function returned inside useEffect run?',
       options: [
@@ -66,6 +70,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-5',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Easy',
       topic: 'Performance',
       question: 'What is the correct usage of React.memo?',
       options: [
@@ -81,6 +86,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-6',
       category: 'Frontend (React/JS)',
       skillName: 'JavaScript Core',
+      difficulty: 'Easy',
       topic: 'Closures',
       question: 'What happens when a function inside React useEffect captures a state variable without specifying it in the dependency array?',
       options: [
@@ -96,6 +102,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-7',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Medium',
       topic: 'Concurrent React',
       question: 'What does the useTransition hook in React 18 enable?',
       options: [
@@ -111,6 +118,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-8',
       category: 'Frontend (React/JS)',
       skillName: 'CSS & Layout',
+      difficulty: 'Medium',
       topic: 'Tailwind & Flexbox',
       question: 'Which Tailwind CSS class combination centers an element horizontally and vertically inside a full-height flex container?',
       options: [
@@ -126,6 +134,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-9',
       category: 'Frontend (React/JS)',
       skillName: 'TypeScript',
+      difficulty: 'Medium',
       topic: 'Generics',
       question: 'In TypeScript, what does the keyword `extends` signify in `<T extends keyof U>`?',
       options: [
@@ -141,6 +150,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-10',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Medium',
       topic: 'Context API',
       question: 'What is a major potential performance pitfall of using a single large React Context for all app state?',
       options: [
@@ -156,6 +166,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-11',
       category: 'Frontend (React/JS)',
       skillName: 'JavaScript Core',
+      difficulty: 'Medium',
       topic: 'Promises & Async',
       question: 'What is the result of executing Promise.all([p1, p2, p3]) if p2 rejects?',
       options: [
@@ -171,6 +182,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-12',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Medium',
       topic: 'Custom Hooks',
       question: 'What rule MUST custom React hooks follow to maintain state consistency?',
       options: [
@@ -186,6 +198,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-13',
       category: 'Frontend (React/JS)',
       skillName: 'Web APIs',
+      difficulty: 'Medium',
       topic: 'DOM Operations',
       question: 'What is event delegation in JavaScript?',
       options: [
@@ -201,6 +214,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-14',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Medium',
       topic: 'Keys & Lists',
       question: 'Why should array indices generally be avoided as `key` props when rendering dynamic lists in React?',
       options: [
@@ -216,6 +230,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-15',
       category: 'Frontend (React/JS)',
       skillName: 'State Management',
+      difficulty: 'Advanced',
       topic: 'Zustand / Redux',
       question: 'In Redux Toolkit / Immer, why are direct state mutations allowed inside reducers?',
       options: [
@@ -231,6 +246,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-16',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Advanced',
       topic: 'Ref & DOM',
       question: 'What is the primary difference between useRef and useState?',
       options: [
@@ -246,6 +262,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-17',
       category: 'Frontend (React/JS)',
       skillName: 'Web Security',
+      difficulty: 'Advanced',
       topic: 'XSS Prevention',
       question: 'How does JSX naturally protect applications against Cross-Site Scripting (XSS)?',
       options: [
@@ -261,6 +278,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-18',
       category: 'Frontend (React/JS)',
       skillName: 'Performance',
+      difficulty: 'Advanced',
       topic: 'Code Splitting',
       question: 'How do you lazy-load a React component for dynamic route code splitting?',
       options: [
@@ -276,6 +294,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-19',
       category: 'Frontend (React/JS)',
       skillName: 'TypeScript',
+      difficulty: 'Advanced',
       topic: 'Utility Types',
       question: 'Which TypeScript utility type creates a type with all properties of T set to optional?',
       options: ['Required<T>', 'Partial<T>', 'Readonly<T>', 'Omit<T, keyof T>'],
@@ -286,6 +305,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'react-20',
       category: 'Frontend (React/JS)',
       skillName: 'React.js',
+      difficulty: 'Advanced',
       topic: 'Error Boundaries',
       question: 'Which lifecycle method or hook is required to create a React Error Boundary?',
       options: [
@@ -304,6 +324,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-1',
       category: 'Backend (Node/Express)',
       skillName: 'Node.js',
+      difficulty: 'Easy',
       topic: 'Architecture',
       question: 'What handles non-blocking I/O operations and thread pooling in Node.js underlying runtime?',
       options: [
@@ -319,6 +340,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-2',
       category: 'Backend (Node/Express)',
       skillName: 'Express.js',
+      difficulty: 'Easy',
       topic: 'Middleware',
       question: 'What happens if an Express middleware function does NOT call next() or send a response (res.send/json)?',
       options: [
@@ -334,6 +356,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-3',
       category: 'Backend (Node/Express)',
       skillName: 'Node.js',
+      difficulty: 'Easy',
       topic: 'Streams',
       question: 'Why are Streams preferred over fs.readFile when handling large multi-gigabyte file downloads?',
       options: [
@@ -349,6 +372,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-4',
       category: 'Backend (Node/Express)',
       skillName: 'REST API',
+      difficulty: 'Easy',
       topic: 'HTTP Methods',
       question: 'According to REST conventions, what is the key difference between PUT and PATCH methods?',
       options: [
@@ -364,6 +388,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-5',
       category: 'Backend (Node/Express)',
       skillName: 'Security',
+      difficulty: 'Easy',
       topic: 'JWT & Auth',
       question: 'Where is the safest place to store a JSON Web Token (JWT) in a web browser to prevent XSS attacks?',
       options: [
@@ -379,6 +404,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-6',
       category: 'Backend (Node/Express)',
       skillName: 'Express.js',
+      difficulty: 'Easy',
       topic: 'Error Handling',
       question: 'How does Express identify a specialized error-handling middleware function?',
       options: [
@@ -394,6 +420,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-7',
       category: 'Backend (Node/Express)',
       skillName: 'Node.js',
+      difficulty: 'Medium',
       topic: 'Event Loop',
       question: 'Which Node.js method schedules a callback to run in the Check phase immediately after I/O polling?',
       options: [
@@ -409,6 +436,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-8',
       category: 'Backend (Node/Express)',
       skillName: 'Node.js',
+      difficulty: 'Medium',
       topic: 'Process & Clusters',
       question: 'What does the Node.js `cluster` module do?',
       options: [
@@ -424,6 +452,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-9',
       category: 'Backend (Node/Express)',
       skillName: 'Security',
+      difficulty: 'Medium',
       topic: 'CORS',
       question: 'What causes a browser to send an HTTP OPTIONS "preflight" request prior to an actual API request?',
       options: [
@@ -439,6 +468,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-10',
       category: 'Backend (Node/Express)',
       skillName: 'Node.js',
+      difficulty: 'Medium',
       topic: 'EventEmitter',
       question: 'What happens if an EventEmitter in Node.js emits an \'error\' event and no listener is attached?',
       options: [
@@ -454,6 +484,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-11',
       category: 'Backend (Node/Express)',
       skillName: 'API Design',
+      difficulty: 'Medium',
       topic: 'Rate Limiting',
       question: 'Which HTTP status code should a backend server return when a client exceeds rate limits?',
       options: ['400 Bad Request', '401 Unauthorized', '429 Too Many Requests', '503 Service Unavailable'],
@@ -464,6 +495,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-12',
       category: 'Backend (Node/Express)',
       skillName: 'Node.js',
+      difficulty: 'Medium',
       topic: 'Modules (ESM vs CJS)',
       question: 'In Node.js ES Modules (.mjs / "type": "module"), which CJS global is unavailable natively?',
       options: ['console', 'process', '__dirname', 'Buffer'],
@@ -474,6 +506,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-13',
       category: 'Backend (Node/Express)',
       skillName: 'Security',
+      difficulty: 'Medium',
       topic: 'Injection Attacks',
       question: 'How do parameterised/prepared SQL queries prevent SQL Injection?',
       options: [
@@ -489,6 +522,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-14',
       category: 'Backend (Node/Express)',
       skillName: 'Express.js',
+      difficulty: 'Medium',
       topic: 'Routing',
       question: 'In Express path matching, how do you capture a named parameter from URL path `/users/:id`?',
       options: ['req.body.id', 'req.params.id', 'req.query.id', 'req.headers.id'],
@@ -499,6 +533,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-15',
       category: 'Backend (Node/Express)',
       skillName: 'Performance',
+      difficulty: 'Advanced',
       topic: 'Compression',
       question: 'What middleware module is commonly used in Express to compress HTTP response bodies (Gzip/Brotli)?',
       options: ['helmet', 'compression', 'morgan', 'cors'],
@@ -509,6 +544,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-16',
       category: 'Backend (Node/Express)',
       skillName: 'Node.js',
+      difficulty: 'Advanced',
       topic: 'Worker Threads',
       question: 'When should worker_threads be used instead of standard asynchronous I/O callbacks in Node.js?',
       options: [
@@ -524,6 +560,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-17',
       category: 'Backend (Node/Express)',
       skillName: 'Security',
+      difficulty: 'Advanced',
       topic: 'HTTP Headers',
       question: 'What security functionality does the `helmet` package provide for Express applications?',
       options: [
@@ -539,6 +576,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-18',
       category: 'Backend (Node/Express)',
       skillName: 'Node.js',
+      difficulty: 'Advanced',
       topic: 'Memory Management',
       question: 'Which tool or process parameter can inspect memory leaks in a running Node.js production server?',
       options: [
@@ -554,6 +592,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-19',
       category: 'Backend (Node/Express)',
       skillName: 'Caching',
+      difficulty: 'Advanced',
       topic: 'Redis',
       question: 'In a distributed backend microservice architecture, why is Redis often used for session storage?',
       options: [
@@ -569,6 +608,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'node-20',
       category: 'Backend (Node/Express)',
       skillName: 'WebSockets',
+      difficulty: 'Advanced',
       topic: 'Realtime Protocol',
       question: 'How does the initial connection handshaking work for WebSockets (ws://)?',
       options: [
@@ -587,6 +627,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-1',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Machine Learning',
+      difficulty: 'Easy',
       topic: 'Model Training',
       question: 'What is overfitting in machine learning models?',
       options: [
@@ -602,6 +643,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-2',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Deep Learning',
+      difficulty: 'Easy',
       topic: 'Transformers & Attention',
       question: 'What is the mathematical core innovation of the Transformer architecture introduced in "Attention Is All You Need"?',
       options: [
@@ -617,6 +659,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-3',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'PyTorch',
+      difficulty: 'Easy',
       topic: 'Autograd',
       question: 'In PyTorch, what does calling `loss.backward()` perform?',
       options: [
@@ -632,6 +675,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-4',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Evaluation Metrics',
+      difficulty: 'Easy',
       topic: 'Classification',
       question: 'Which evaluation metric is preferred over accuracy when evaluating a highly imbalanced dataset (e.g. 99% negative, 1% positive)?',
       options: ['Mean Squared Error (MSE)', 'Accuracy Score', 'F1-Score / Area Under Precision-Recall Curve (PR-AUC)', 'R-squared'],
@@ -642,6 +686,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-5',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'PyTorch',
+      difficulty: 'Easy',
       topic: 'Optimizer',
       question: 'Why do we call `optimizer.zero_grad()` before computing `loss.backward()` in a PyTorch training loop?',
       options: [
@@ -657,6 +702,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-6',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Deep Learning',
+      difficulty: 'Easy',
       topic: 'Activation Functions',
       question: 'What advantage does ReLU (Rectified Linear Unit) have over Sigmoid activation functions in deep networks?',
       options: [
@@ -672,6 +718,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-7',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'LLMs & GenAI',
+      difficulty: 'Medium',
       topic: 'RAG',
       question: 'What does RAG stand for in modern Generative AI architecture?',
       options: [
@@ -687,6 +734,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-8',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Python Data Science',
+      difficulty: 'Medium',
       topic: 'NumPy / Vectorization',
       question: 'Why is vectorization in NumPy significantly faster than standard Python `for` loops?',
       options: [
@@ -702,6 +750,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-9',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Deep Learning',
+      difficulty: 'Medium',
       topic: 'Regularization',
       question: 'How does Dropout act as a regularization technique during training?',
       options: [
@@ -717,6 +766,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-10',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'LLMs & GenAI',
+      difficulty: 'Medium',
       topic: 'Fine-Tuning',
       question: 'What is LoRA (Low-Rank Adaptation) used for in Large Language Model fine-tuning?',
       options: [
@@ -732,6 +782,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-11',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Optimization',
+      difficulty: 'Medium',
       topic: 'Gradient Descent',
       question: 'What happens if the learning rate parameter in Gradient Descent is set excessively high?',
       options: [
@@ -747,6 +798,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-12',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'PyTorch',
+      difficulty: 'Medium',
       topic: 'Model Evaluation',
       question: 'What does `model.eval()` do in PyTorch?',
       options: [
@@ -762,6 +814,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-13',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Computer Vision',
+      difficulty: 'Medium',
       topic: 'CNNs',
       question: 'What is the primary role of Pooling layers (e.g. MaxPool2d) in Convolutional Neural Networks?',
       options: [
@@ -777,6 +830,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-14',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'NLP',
+      difficulty: 'Medium',
       topic: 'Embeddings',
       question: 'What is a text embedding in vector space?',
       options: [
@@ -792,6 +846,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-15',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Loss Functions',
+      difficulty: 'Advanced',
       topic: 'Regression vs Classification',
       question: 'Which loss function is standard for multi-class classification tasks with softmax outputs?',
       options: ['Mean Absolute Error (MAE)', 'Categorical Cross-Entropy Loss', 'Huber Loss', 'Hinge Loss'],
@@ -802,6 +857,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-16',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'LLMs & GenAI',
+      difficulty: 'Advanced',
       topic: 'Temperature Parameter',
       question: 'In LLM decoding sampling, what happens when you set `temperature` to 0.0?',
       options: [
@@ -817,6 +873,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-17',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Machine Learning',
+      difficulty: 'Advanced',
       topic: 'Bias-Variance Tradeoff',
       question: 'A model with high bias and low variance is typically suffering from:',
       options: ['Overfitting', 'Underfitting', 'Data leakage', 'Perfect generalization'],
@@ -827,6 +884,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-18',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'PyTorch',
+      difficulty: 'Advanced',
       topic: 'No Grad Context',
       question: 'Why do we wrap PyTorch validation inference code inside `with torch.no_grad():`?',
       options: [
@@ -842,6 +900,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-19',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Data Preprocessing',
+      difficulty: 'Advanced',
       topic: 'Normalization',
       question: 'Why is feature scaling (e.g., StandardScaler or MinMaxScaler) critical before training algorithms like SVMs or k-NN?',
       options: [
@@ -857,6 +916,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'aiml-20',
       category: 'AI/ML (Python/PyTorch)',
       skillName: 'Vector Databases',
+      difficulty: 'Advanced',
       topic: 'Similarity Metrics',
       question: 'Which vector distance metric measures the cosine of the angle between two embedding vectors regardless of magnitude?',
       options: ['Euclidean Distance (L2)', 'Cosine Similarity', 'Manhattan Distance (L1)', 'Hamming Distance'],
@@ -870,6 +930,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-1',
       category: 'UI/UX Design',
       skillName: 'UX Principles',
+      difficulty: 'Easy',
       topic: 'Fitts\'s Law',
       question: 'What does Fitts\'s Law state regarding user interface design?',
       options: [
@@ -885,6 +946,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-2',
       category: 'UI/UX Design',
       skillName: 'Accessibility',
+      difficulty: 'Easy',
       topic: 'WCAG Contrast',
       question: 'According to WCAG 2.1 AA standards, what is the minimum required color contrast ratio for normal body text?',
       options: ['2.5:1', '3.0:1', '4.5:1', '7.0:1'],
@@ -895,6 +957,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-3',
       category: 'UI/UX Design',
       skillName: 'Design Systems',
+      difficulty: 'Easy',
       topic: 'Typography & Hierarchy',
       question: 'What is the primary goal of creating a typographic scale in a digital design system?',
       options: [
@@ -910,6 +973,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-4',
       category: 'UI/UX Design',
       skillName: 'UX Methods',
+      difficulty: 'Easy',
       topic: 'Heuristic Evaluation',
       question: 'What is Jakob Nielsen\'s heuristic "Visibility of System Status"?',
       options: [
@@ -925,6 +989,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-5',
       category: 'UI/UX Design',
       skillName: 'UI Engineering',
+      difficulty: 'Easy',
       topic: 'Spacing & Grids',
       question: 'Why is the 8pt spatial grid system widely adopted in UI design?',
       options: [
@@ -940,6 +1005,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-6',
       category: 'UI/UX Design',
       skillName: 'User Research',
+      difficulty: 'Easy',
       topic: 'Information Architecture',
       question: 'What is Card Sorting used for during UX research?',
       options: [
@@ -955,6 +1021,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-7',
       category: 'UI/UX Design',
       skillName: 'UX Principles',
+      difficulty: 'Medium',
       topic: 'Hick\'s Law',
       question: 'What principle is derived from Hick\'s Law in UX design?',
       options: [
@@ -970,6 +1037,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-8',
       category: 'UI/UX Design',
       skillName: 'Prototyping',
+      difficulty: 'Medium',
       topic: 'Figma & Components',
       question: 'In Figma / modern design tools, what is the purpose of Auto Layout?',
       options: [
@@ -985,6 +1053,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-9',
       category: 'UI/UX Design',
       skillName: 'Visual Design',
+      difficulty: 'Medium',
       topic: 'Color Theory',
       question: 'What is the 60-30-10 rule in UI color composition?',
       options: [
@@ -1000,6 +1069,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-10',
       category: 'UI/UX Design',
       skillName: 'Accessibility',
+      difficulty: 'Medium',
       topic: 'Focus States',
       question: 'Why should keyboard focus outlines (`:focus-visible`) never be completely removed without a visible alternative?',
       options: [
@@ -1015,6 +1085,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-11',
       category: 'UI/UX Design',
       skillName: 'Interaction Design',
+      difficulty: 'Medium',
       topic: 'Micro-interactions',
       question: 'What are the 4 essential parts of a UX micro-interaction according to Dan Saffer?',
       options: [
@@ -1030,6 +1101,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-12',
       category: 'UI/UX Design',
       skillName: 'User Research',
+      difficulty: 'Medium',
       topic: 'Usability Testing',
       question: 'What is the "Think Aloud" protocol during usability testing sessions?',
       options: [
@@ -1045,6 +1117,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-13',
       category: 'UI/UX Design',
       skillName: 'Visual Design',
+      difficulty: 'Medium',
       topic: 'Affordance vs Signifier',
       question: 'In Norman\'s Design of Everyday Things, what is a "signifier"?',
       options: [
@@ -1060,6 +1133,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-14',
       category: 'UI/UX Design',
       skillName: 'Design Systems',
+      difficulty: 'Medium',
       topic: 'Tokens',
       question: 'What are Design Tokens in UI engineering?',
       options: [
@@ -1075,6 +1149,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-15',
       category: 'UI/UX Design',
       skillName: 'UX Patterns',
+      difficulty: 'Advanced',
       topic: 'Dark Patterns',
       question: 'What constitutes a "Dark Pattern" (Deceptive Design) in UX design?',
       options: [
@@ -1090,6 +1165,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-16',
       category: 'UI/UX Design',
       skillName: 'Mobile UX',
+      difficulty: 'Advanced',
       topic: 'Thumb Zone',
       question: 'Where should primary mobile actions be placed according to the Steven Hoober Thumb Zone study?',
       options: [
@@ -1105,6 +1181,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-17',
       category: 'UI/UX Design',
       skillName: 'UI Animation',
+      difficulty: 'Advanced',
       topic: 'Easing',
       question: 'Which easing curve feels most natural for elements entering the screen?',
       options: [
@@ -1120,6 +1197,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-18',
       category: 'UI/UX Design',
       skillName: 'Visual Design',
+      difficulty: 'Advanced',
       topic: 'Negative Space',
       question: 'What is the role of Negative Space (Whitespace) in UI layout design?',
       options: [
@@ -1135,6 +1213,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-19',
       category: 'UI/UX Design',
       skillName: 'User Research',
+      difficulty: 'Advanced',
       topic: 'Personas',
       question: 'What is a User Persona in UX strategy?',
       options: [
@@ -1150,6 +1229,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'uiux-20',
       category: 'UI/UX Design',
       skillName: 'Information Architecture',
+      difficulty: 'Advanced',
       topic: 'Breadcrumbs',
       question: 'When are Breadcrumbs most beneficial in web navigation?',
       options: [
@@ -1168,6 +1248,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-1',
       category: 'Data Structures & Algorithms',
       skillName: 'Algorithms',
+      difficulty: 'Easy',
       topic: 'Time Complexity',
       question: 'What is the average and worst-case time complexity of QuickSort?',
       options: [
@@ -1183,6 +1264,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-2',
       category: 'Data Structures & Algorithms',
       skillName: 'Data Structures',
+      difficulty: 'Easy',
       topic: 'Hash Tables',
       question: 'What is the expected average time complexity for insertion, deletion, and lookup in a Hash Map?',
       options: ['O(N)', 'O(log N)', 'O(1)', 'O(N log N)'],
@@ -1193,6 +1275,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-3',
       category: 'Data Structures & Algorithms',
       skillName: 'Graph Algorithms',
+      difficulty: 'Easy',
       topic: 'Dijkstra\'s Algorithm',
       question: 'What condition MUST hold for Dijkstra\'s shortest path algorithm to yield correct results?',
       options: [
@@ -1208,6 +1291,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-4',
       category: 'Data Structures & Algorithms',
       skillName: 'Trees',
+      difficulty: 'Easy',
       topic: 'Binary Search Tree',
       question: 'Which tree traversal order visits nodes of a Binary Search Tree in strictly sorted ascending order?',
       options: ['Pre-order (Root, Left, Right)', 'In-order (Left, Root, Right)', 'Post-order (Left, Right, Root)', 'Level-order (BFS)'],
@@ -1218,6 +1302,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-5',
       category: 'Data Structures & Algorithms',
       skillName: 'Dynamic Programming',
+      difficulty: 'Easy',
       topic: 'DP Fundamentals',
       question: 'What two key properties make a problem suitable for Dynamic Programming optimization?',
       options: [
@@ -1233,6 +1318,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-6',
       category: 'Data Structures & Algorithms',
       skillName: 'Data Structures',
+      difficulty: 'Easy',
       topic: 'Heaps & Priority Queue',
       question: 'What is the time complexity to insert a new element into a Min-Heap of size N?',
       options: ['O(1)', 'O(log N)', 'O(N)', 'O(N log N)'],
@@ -1243,6 +1329,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-7',
       category: 'Data Structures & Algorithms',
       skillName: 'Algorithms',
+      difficulty: 'Medium',
       topic: 'Two Pointers',
       question: 'In the classic 2-Sum problem on a SORTED array, how do two pointers move to find target sum K?',
       options: [
@@ -1258,6 +1345,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-8',
       category: 'Data Structures & Algorithms',
       skillName: 'Data Structures',
+      difficulty: 'Medium',
       topic: 'Stack vs Queue',
       question: 'Which data structure enforces Last-In, First-Out (LIFO) order?',
       options: ['Queue', 'Stack', 'Linked List', 'Priority Queue'],
@@ -1268,6 +1356,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-9',
       category: 'Data Structures & Algorithms',
       skillName: 'Graph Algorithms',
+      difficulty: 'Medium',
       topic: 'BFS vs DFS',
       question: 'Which graph traversal algorithm uses a Queue data structure and finds the shortest path in unweighted graphs?',
       options: ['Depth-First Search (DFS)', 'Breadth-First Search (BFS)', 'Kruskal\'s Algorithm', 'Topological Sort'],
@@ -1278,6 +1367,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-10',
       category: 'Data Structures & Algorithms',
       skillName: 'Algorithms',
+      difficulty: 'Medium',
       topic: 'Sliding Window',
       question: 'When is the Sliding Window technique most effective?',
       options: [
@@ -1293,6 +1383,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-11',
       category: 'Data Structures & Algorithms',
       skillName: 'Data Structures',
+      difficulty: 'Medium',
       topic: 'Trie',
       question: 'What is a Trie (Prefix Tree) data structure primarily optimized for?',
       options: [
@@ -1308,6 +1399,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-12',
       category: 'Data Structures & Algorithms',
       skillName: 'Algorithms',
+      difficulty: 'Medium',
       topic: 'Binary Search',
       question: 'What is the worst-case space complexity of iterative Binary Search on an array?',
       options: ['O(N)', 'O(log N)', 'O(1)', 'O(N²)'],
@@ -1318,6 +1410,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-13',
       category: 'Data Structures & Algorithms',
       skillName: 'Trees',
+      difficulty: 'Medium',
       topic: 'AVL & Red-Black Trees',
       question: 'Why are self-balancing BSTs (like Red-Black trees) preferred over standard BSTs in library implementations (e.g., std::map)?',
       options: [
@@ -1333,6 +1426,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-14',
       category: 'Data Structures & Algorithms',
       skillName: 'Graph Algorithms',
+      difficulty: 'Medium',
       topic: 'Topological Sort',
       question: 'Topological sorting can ONLY be performed on which type of graph?',
       options: [
@@ -1348,6 +1442,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-15',
       category: 'Data Structures & Algorithms',
       skillName: 'Data Structures',
+      difficulty: 'Advanced',
       topic: 'Disjoint Set (Union-Find)',
       question: 'With Path Compression and Rank optimization, what is the amortized time complexity per operation in Union-Find?',
       options: ['O(N)', 'O(log N)', 'Nearly O(1) amortized (inverse Ackermann function α(N))', 'O(N²)'],
@@ -1358,6 +1453,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-16',
       category: 'Data Structures & Algorithms',
       skillName: 'Algorithms',
+      difficulty: 'Advanced',
       topic: 'Bit Manipulation',
       question: 'What does the bitwise expression `n & (n - 1)` evaluate to?',
       options: [
@@ -1373,6 +1469,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-17',
       category: 'Data Structures & Algorithms',
       skillName: 'Data Structures',
+      difficulty: 'Advanced',
       topic: 'Linked List',
       question: 'Floyd\'s Tortoise and Hare algorithm is used to detect:',
       options: [
@@ -1388,6 +1485,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-18',
       category: 'Data Structures & Algorithms',
       skillName: 'Dynamic Programming',
+      difficulty: 'Advanced',
       topic: '0/1 Knapsack',
       question: 'What is the time complexity of the 0/1 Knapsack dynamic programming solution with N items and capacity W?',
       options: ['O(2^N)', 'O(N * W) pseudo-polynomial', 'O(N log W)', 'O(N + W)'],
@@ -1398,6 +1496,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-19',
       category: 'Data Structures & Algorithms',
       skillName: 'Sorting',
+      difficulty: 'Advanced',
       topic: 'Stability in Sorting',
       question: 'What does it mean for a sorting algorithm to be "Stable"?',
       options: [
@@ -1413,6 +1512,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'dsa-20',
       category: 'Data Structures & Algorithms',
       skillName: 'Space Complexity',
+      difficulty: 'Advanced',
       topic: 'Recursion Depth',
       question: 'What causes a `Maximum call stack size exceeded` (StackOverflow) error in recursive function calls?',
       options: [
@@ -1431,6 +1531,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-1',
       category: 'Database Management (SQL)',
       skillName: 'SQL Core',
+      difficulty: 'Easy',
       topic: 'ACID Properties',
       question: 'What does the "I" in ACID database transaction properties stand for?',
       options: ['Indexing', 'Isolation', 'Integrity', 'Immutability'],
@@ -1441,6 +1542,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-2',
       category: 'Database Management (SQL)',
       skillName: 'Database Indexing',
+      difficulty: 'Easy',
       topic: 'B-Tree Indexing',
       question: 'How does a B-Tree index speed up SELECT query filtering on indexed columns?',
       options: [
@@ -1456,6 +1558,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-3',
       category: 'Database Management (SQL)',
       skillName: 'SQL Joins',
+      difficulty: 'Easy',
       topic: 'JOIN Types',
       question: 'Which SQL JOIN returns all rows from the left table and matching rows from the right table, with NULLs for unmatched right rows?',
       options: ['INNER JOIN', 'LEFT (OUTER) JOIN', 'FULL OUTER JOIN', 'CROSS JOIN'],
@@ -1466,6 +1569,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-4',
       category: 'Database Management (SQL)',
       skillName: 'Database Design',
+      difficulty: 'Easy',
       topic: 'Normalization',
       question: 'A table is in Third Normal Form (3NF) if it is in 2NF and:',
       options: [
@@ -1481,6 +1585,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-5',
       category: 'Database Management (SQL)',
       skillName: 'SQL Aggregations',
+      difficulty: 'Easy',
       topic: 'HAVING vs WHERE',
       question: 'When should the `HAVING` clause be used instead of `WHERE` in a SELECT query?',
       options: [
@@ -1496,6 +1601,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-6',
       category: 'Database Management (SQL)',
       skillName: 'Database Indexing',
+      difficulty: 'Easy',
       topic: 'Composite Index',
       question: 'Given a composite index on `(last_name, first_name)`, which query CANNOT utilize this index effectively?',
       options: [
@@ -1511,6 +1617,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-7',
       category: 'Database Management (SQL)',
       skillName: 'Transactions',
+      difficulty: 'Medium',
       topic: 'Isolation Levels',
       question: 'Which isolation level prevents Dirty Reads but allows Non-Repeatable Reads?',
       options: ['Read Uncommitted', 'Read Committed', 'Repeatable Read', 'Serializable'],
@@ -1521,6 +1628,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-8',
       category: 'Database Management (SQL)',
       skillName: 'PostgreSQL Features',
+      difficulty: 'Medium',
       topic: 'JSONB Data Type',
       question: 'Why is `JSONB` preferred over plain `JSON` text column types in PostgreSQL?',
       options: [
@@ -1536,6 +1644,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-9',
       category: 'Database Management (SQL)',
       skillName: 'SQL Constraints',
+      difficulty: 'Medium',
       topic: 'Foreign Key',
       question: 'What does `ON DELETE CASCADE` specified on a Foreign Key constraint enforce?',
       options: [
@@ -1551,6 +1660,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-10',
       category: 'Database Management (SQL)',
       skillName: 'Query Optimization',
+      difficulty: 'Medium',
       topic: 'EXPLAIN ANALYZE',
       question: 'What is the purpose of running `EXPLAIN ANALYZE` before a SQL query in PostgreSQL?',
       options: [
@@ -1566,6 +1676,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-11',
       category: 'Database Management (SQL)',
       skillName: 'NoSQL vs Relational',
+      difficulty: 'Medium',
       topic: 'CAP Theorem',
       question: 'According to the CAP Theorem for distributed databases, what 3 guarantees cannot be achieved simultaneously during network partition?',
       options: [
@@ -1581,6 +1692,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-12',
       category: 'Database Management (SQL)',
       skillName: 'SQL Advanced',
+      difficulty: 'Medium',
       topic: 'Window Functions',
       question: 'How do Window functions (e.g. `ROW_NUMBER() OVER (PARTITION BY dept_id ORDER BY salary DESC)`) differ from GROUP BY?',
       options: [
@@ -1596,6 +1708,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-13',
       category: 'Database Management (SQL)',
       skillName: 'Database Locks',
+      difficulty: 'Medium',
       topic: 'Deadlock',
       question: 'What causes a Database Deadlock?',
       options: [
@@ -1611,6 +1724,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-14',
       category: 'Database Management (SQL)',
       skillName: 'SQL Statements',
+      difficulty: 'Medium',
       topic: 'TRUNCATE vs DELETE',
       question: 'Why is `TRUNCATE TABLE` faster than `DELETE FROM table` for removing all rows in a table?',
       options: [
@@ -1626,6 +1740,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-15',
       category: 'Database Management (SQL)',
       skillName: 'SQL Concepts',
+      difficulty: 'Advanced',
       topic: 'NULL handling',
       question: 'What is the evaluation result of SQL expression `SELECT 5 + NULL`?',
       options: ['5', '0', 'NULL', 'Throws TypeError'],
@@ -1636,6 +1751,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-16',
       category: 'Database Management (SQL)',
       skillName: 'Database Architecture',
+      difficulty: 'Advanced',
       topic: 'Connection Pooling',
       question: 'Why is DB Connection Pooling (e.g. PgBouncer) used in high-traffic web applications?',
       options: [
@@ -1651,6 +1767,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-17',
       category: 'Database Management (SQL)',
       skillName: 'PostgreSQL Features',
+      difficulty: 'Advanced',
       topic: 'WAL (Write-Ahead Logging)',
       question: 'What is the primary role of Write-Ahead Logging (WAL) in relational databases?',
       options: [
@@ -1666,6 +1783,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-18',
       category: 'Database Management (SQL)',
       skillName: 'SQL Operators',
+      difficulty: 'Advanced',
       topic: 'EXISTS vs IN',
       question: 'Why is `EXISTS (SELECT 1 FROM ...)` often more performant than `IN (SELECT col FROM ...)` for large subqueries?',
       options: [
@@ -1681,6 +1799,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-19',
       category: 'Database Management (SQL)',
       skillName: 'Database Views',
+      difficulty: 'Advanced',
       topic: 'Materialized Views',
       question: 'What distinguishes a Materialized View from a standard Virtual View?',
       options: [
@@ -1696,6 +1815,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'db-20',
       category: 'Database Management (SQL)',
       skillName: 'Database Security',
+      difficulty: 'Advanced',
       topic: 'Least Privilege',
       question: 'In production database user management, what does the Principle of Least Privilege dictate?',
       options: [
@@ -1714,6 +1834,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-1',
       category: 'Full Stack Systems',
       skillName: 'System Design',
+      difficulty: 'Easy',
       topic: 'Load Balancing',
       question: 'What is the difference between Layer 4 and Layer 7 Load Balancing?',
       options: [
@@ -1729,6 +1850,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-2',
       category: 'Full Stack Systems',
       skillName: 'Web Infrastructure',
+      difficulty: 'Easy',
       topic: 'CDN',
       question: 'How does a Content Delivery Network (CDN) decrease page load latency for global users?',
       options: [
@@ -1744,6 +1866,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-3',
       category: 'Full Stack Systems',
       skillName: 'System Architecture',
+      difficulty: 'Easy',
       topic: 'Microservices vs Monolith',
       question: 'What major challenge is introduced when breaking a Monolith into Microservices?',
       options: [
@@ -1759,6 +1882,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-4',
       category: 'Full Stack Systems',
       skillName: 'Web Security',
+      difficulty: 'Easy',
       topic: 'CSRF Protection',
       question: 'How do Anti-CSRF tokens prevent Cross-Site Request Forgery attacks on state-changing requests?',
       options: [
@@ -1774,6 +1898,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-5',
       category: 'Full Stack Systems',
       skillName: 'Message Queues',
+      difficulty: 'Easy',
       topic: 'Asynchronous Processing',
       question: 'Why are message queues (e.g. RabbitMQ, Apache Kafka) essential for handling spike background tasks like video processing?',
       options: [
@@ -1789,6 +1914,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-6',
       category: 'Full Stack Systems',
       skillName: 'Caching Strategies',
+      difficulty: 'Easy',
       topic: 'Cache-Aside Pattern',
       question: 'In the Cache-Aside (Lazy Loading) caching pattern, what happens when a application reads data?',
       options: [
@@ -1804,6 +1930,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-7',
       category: 'Full Stack Systems',
       skillName: 'Web Protocols',
+      difficulty: 'Medium',
       topic: 'HTTP/2 vs HTTP/1.1',
       question: 'What key protocol improvement did HTTP/2 introduce over HTTP/1.1?',
       options: [
@@ -1819,6 +1946,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-8',
       category: 'Full Stack Systems',
       skillName: 'DevOps & Containers',
+      difficulty: 'Medium',
       topic: 'Docker',
       question: 'What is the fundamental difference between a Docker Container and a Virtual Machine (VM)?',
       options: [
@@ -1834,6 +1962,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-9',
       category: 'Full Stack Systems',
       skillName: 'API Architecture',
+      difficulty: 'Medium',
       topic: 'GraphQL vs REST',
       question: 'What problem does GraphQL solve compared to traditional REST API endpoints?',
       options: [
@@ -1849,6 +1978,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-10',
       category: 'Full Stack Systems',
       skillName: 'Performance',
+      difficulty: 'Medium',
       topic: 'Core Web Vitals',
       question: 'What does Largest Contentful Paint (LCP) measure in Google Core Web Vitals metrics?',
       options: [
@@ -1864,6 +1994,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-11',
       category: 'Full Stack Systems',
       skillName: 'API Design',
+      difficulty: 'Medium',
       topic: 'Idempotency',
       question: 'What makes an API endpoint "Idempotent"?',
       options: [
@@ -1879,6 +2010,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-12',
       category: 'Full Stack Systems',
       skillName: 'Web Security',
+      difficulty: 'Medium',
       topic: 'HTTPS & TLS',
       question: 'During TLS 1.3 handshake setup, what key exchange algorithm enables Perfect Forward Secrecy (PFS)?',
       options: [
@@ -1894,6 +2026,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-13',
       category: 'Full Stack Systems',
       skillName: 'State Management',
+      difficulty: 'Medium',
       topic: 'SSO & OAuth 2.0',
       question: 'In OAuth 2.0 Authorization Code flow with PKCE, what is PKCE designed to protect against?',
       options: [
@@ -1909,6 +2042,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-14',
       category: 'Full Stack Systems',
       skillName: 'CI/CD Pipelines',
+      difficulty: 'Medium',
       topic: 'Deployment Strategies',
       question: 'What is a Blue-Green Deployment strategy?',
       options: [
@@ -1924,6 +2058,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-15',
       category: 'Full Stack Systems',
       skillName: 'System Resiliency',
+      difficulty: 'Advanced',
       topic: 'Circuit Breaker Pattern',
       question: 'What is the primary role of the Circuit Breaker pattern in microservice architecture?',
       options: [
@@ -1939,6 +2074,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-16',
       category: 'Full Stack Systems',
       skillName: 'Web Storage',
+      difficulty: 'Advanced',
       topic: 'IndexedDB',
       question: 'When should a browser web app use IndexedDB instead of localStorage?',
       options: [
@@ -1954,6 +2090,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-17',
       category: 'Full Stack Systems',
       skillName: 'Observability',
+      difficulty: 'Advanced',
       topic: 'Distributed Tracing',
       question: 'What is a Trace ID / Span ID used for in distributed systems telemetry (e.g. OpenTelemetry)?',
       options: [
@@ -1969,6 +2106,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-18',
       category: 'Full Stack Systems',
       skillName: 'Web Performance',
+      difficulty: 'Advanced',
       topic: 'Server-Side Rendering (SSR)',
       question: 'What is the primary benefit of SSR (or SSG) over purely client-side rendered SPAs?',
       options: [
@@ -1984,6 +2122,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-19',
       category: 'Full Stack Systems',
       skillName: 'Database Architecture',
+      difficulty: 'Advanced',
       topic: 'Sharding',
       question: 'What is Database Sharding?',
       options: [
@@ -1999,6 +2138,7 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
       id: 'fs-20',
       category: 'Full Stack Systems',
       skillName: 'Networking',
+      difficulty: 'Advanced',
       topic: 'DNS Lookups',
       question: 'What does a DNS `A Record` map a domain name (e.g. example.com) to?',
       options: ['An email server address', 'An IPv4 address', 'An IPv6 address', 'A text string identifier'],
@@ -2008,14 +2148,24 @@ export const QUESTION_BANK: Record<SkillCategory, Question[]> = {
   ]
 };
 
-// Helper: Get 20 randomized questions for a given skill category
+// Helper: Get questions progressing strictly: Easy -> Medium -> Advanced
 export function getRandomQuestions(category: SkillCategory, count = 20): Question[] {
   const bank = QUESTION_BANK[category] || QUESTION_BANK['Frontend (React/JS)'];
-  // Shuffle array using Fisher-Yates
-  const shuffled = [...bank];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled.slice(0, count);
+
+  const shuffle = (items: Question[]): Question[] => {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const easyList = shuffle(bank.filter(q => q.difficulty === 'Easy'));
+  const mediumList = shuffle(bank.filter(q => q.difficulty === 'Medium'));
+  const advancedList = shuffle(bank.filter(q => q.difficulty === 'Advanced'));
+
+  // Strict progressive sequence: Easy first, then Medium, then Advanced
+  const progressive = [...easyList, ...mediumList, ...advancedList];
+  return progressive.slice(0, count);
 }

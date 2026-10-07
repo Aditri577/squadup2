@@ -1,7 +1,7 @@
 {
   "users": [
     {
-      "id": "user-aditi",
+      "id": "user-aditri",
       "name": "Aditri Saxena",
       "email": "aditi.saxena@example.edu",
       "avatar": "duo-owl",
@@ -552,226 +552,6 @@
       "xpPoints": 100,
       "level": 1,
       "passwordHash": "$2b$10$UelRCJzvCPOK4FLREK.TNOmqCe2XJRoKeCs84KoUBIdJ/crWZkax."
-    },
-    {
-      "id": "usr-1789453940184",
-      "name": "gautam",
-      "email": "raghav@gmail.com",
-      "avatar": "duo-owl",
-      "role": "Backend Developer",
-      "college": "IMS engineerning college",
-      "location": "India",
-      "bio": "Verified Backend Developer looking for hackathon teammates.",
-      "skills": [
-        {
-          "id": "sk-1789454017584",
-          "name": "Database Management (SQL)",
-          "category": "Database Management (SQL)",
-          "selfRating": 3,
-          "badgeLevel": "Red",
-          "scorePercent": 0,
-          "verifiedAt": "2026-09-15"
-        }
-      ],
-      "testResults": [
-        {
-          "id": "res-1789454013320",
-          "userId": "usr-1789453940184",
-          "skillName": "Database Management (SQL)",
-          "category": "Database Management (SQL)",
-          "scorePercent": 0,
-          "totalQuestions": 20,
-          "correctCount": 0,
-          "badgeLevel": "Red",
-          "warningCount": 3,
-          "terminated": true,
-          "terminationReason": "Auto-submitted after 3 proctoring violations. Final flag: Tab switched or browser window minimized during test execution!",
-          "completedAt": "2026-09-15T06:33:33.320Z",
-          "topicBreakdown": {
-            "JOIN Types": {
-              "correct": 0,
-              "total": 1
-            },
-            "Composite Index": {
-              "correct": 0,
-              "total": 1
-            },
-            "Least Privilege": {
-              "correct": 0,
-              "total": 1
-            },
-            "ACID Properties": {
-              "correct": 0,
-              "total": 1
-            },
-            "JSONB Data Type": {
-              "correct": 0,
-              "total": 1
-            },
-            "TRUNCATE vs DELETE": {
-              "correct": 0,
-              "total": 1
-            },
-            "B-Tree Indexing": {
-              "correct": 0,
-              "total": 1
-            },
-            "NULL handling": {
-              "correct": 0,
-              "total": 1
-            },
-            "HAVING vs WHERE": {
-              "correct": 0,
-              "total": 1
-            },
-            "Materialized Views": {
-              "correct": 0,
-              "total": 1
-            },
-            "Foreign Key": {
-              "correct": 0,
-              "total": 1
-            },
-            "Connection Pooling": {
-              "correct": 0,
-              "total": 1
-            },
-            "Isolation Levels": {
-              "correct": 0,
-              "total": 1
-            },
-            "Deadlock": {
-              "correct": 0,
-              "total": 1
-            },
-            "Window Functions": {
-              "correct": 0,
-              "total": 1
-            },
-            "Normalization": {
-              "correct": 0,
-              "total": 1
-            },
-            "EXISTS vs IN": {
-              "correct": 0,
-              "total": 1
-            },
-            "CAP Theorem": {
-              "correct": 0,
-              "total": 1
-            },
-            "EXPLAIN ANALYZE": {
-              "correct": 0,
-              "total": 1
-            },
-            "WAL (Write-Ahead Logging)": {
-              "correct": 0,
-              "total": 1
-            }
-          },
-          "antiCheatLogs": [
-            {
-              "id": "acl-1789454013320-term",
-              "timestamp": "2026-09-15T06:33:33.320Z",
-              "event": "PROCTORING_TERMINATED",
-              "message": "Auto-submitted after 3 proctoring violations. Final flag: Tab switched or browser window minimized during test execution!",
-              "severity": "high"
-            },
-            {
-              "id": "acl-1789454013317-04so",
-              "timestamp": "2026-09-15T06:33:33.317Z",
-              "event": "TAB_SWITCH",
-              "message": "Tab switched or browser window minimized during test execution!",
-              "severity": "high"
-            },
-            {
-              "id": "acl-1789454013314-zvc1",
-              "timestamp": "2026-09-15T06:33:33.314Z",
-              "event": "WINDOW_BLUR",
-              "message": "Browser lost window focus or split-screen detected.",
-              "severity": "medium"
-            },
-            {
-              "id": "acl-1789454011211-b665",
-              "timestamp": "2026-09-15T06:33:31.211Z",
-              "event": "MOUSE_LEAVE",
-              "message": "Mouse pointer exited active browser viewport.",
-              "severity": "low"
-            },
-            {
-              "id": "acl-1789454007906-w8x0",
-              "timestamp": "2026-09-15T06:33:27.906Z",
-              "event": "TAB_SWITCH",
-              "message": "Tab switched or browser window minimized during test execution!",
-              "severity": "high"
-            },
-            {
-              "id": "acl-1789454007899-gj2e",
-              "timestamp": "2026-09-15T06:33:27.899Z",
-              "event": "WINDOW_BLUR",
-              "message": "Browser lost window focus or split-screen detected.",
-              "severity": "medium"
-            },
-            {
-              "id": "acl-1789454005534-1fl2",
-              "timestamp": "2026-09-15T06:33:25.534Z",
-              "event": "MOUSE_LEAVE",
-              "message": "Mouse pointer exited active browser viewport.",
-              "severity": "low"
-            },
-            {
-              "id": "acl-1789453999008-hbaa",
-              "timestamp": "2026-09-15T06:33:19.008Z",
-              "event": "FULLSCREEN_EXIT",
-              "message": "Fullscreen mode exited by candidate.",
-              "severity": "high"
-            },
-            {
-              "id": "acl-1789453996736-xprl",
-              "timestamp": "2026-09-15T06:33:16.736Z",
-              "event": "MOUSE_LEAVE",
-              "message": "Mouse pointer exited active browser viewport.",
-              "severity": "low"
-            },
-            {
-              "id": "acl-1789453995574-qppi",
-              "timestamp": "2026-09-15T06:33:15.574Z",
-              "event": "MOUSE_LEAVE",
-              "message": "Mouse pointer exited active browser viewport.",
-              "severity": "low"
-            },
-            {
-              "id": "acl-1789453994864-gg88",
-              "timestamp": "2026-09-15T06:33:14.864Z",
-              "event": "MOUSE_LEAVE",
-              "message": "Mouse pointer exited active browser viewport.",
-              "severity": "low"
-            },
-            {
-              "id": "acl-1789453994071-9nj3",
-              "timestamp": "2026-09-15T06:33:14.071Z",
-              "event": "MOUSE_LEAVE",
-              "message": "Mouse pointer exited active browser viewport.",
-              "severity": "low"
-            },
-            {
-              "id": "acl-1789453989399-nbeb",
-              "timestamp": "2026-09-15T06:33:09.399Z",
-              "event": "MOUSE_LEAVE",
-              "message": "Mouse pointer exited active browser viewport.",
-              "severity": "low"
-            }
-          ]
-        }
-      ],
-      "joinedAt": "2026-09-15",
-      "preferredDomains": [
-        "AI/GenAI"
-      ],
-      "lookingForTeam": true,
-      "xpPoints": 100,
-      "level": 1,
-      "passwordHash": "$2b$10$14uIBt1fvc1sH9fDKDk70Oj15jx2NHP1mmi54CZvyf79Mo4T.b2eG"
     }
   ],
   "teams": [
@@ -886,6 +666,90 @@
         "🤝 Super Helpful"
       ],
       "createdAt": "2026-08-31T15:42:48.698Z"
+    }
+  ],
+  "hackathons": [
+    {
+      "id": "hack-1",
+      "title": "AI Innovations Global Hackathon 2026",
+      "organizer": "Google Cloud & AI Studio",
+      "domain": "AI/GenAI",
+      "banner": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1000",
+      "startDate": "2026-08-15",
+      "endDate": "2026-08-17",
+      "maxTeamSize": 4,
+      "registeredTeamsCount": 142,
+      "description": "Build cutting-edge GenAI applications utilizing server-side Gemini models, multimodal agents, and real-time workflows.",
+      "location": "Online / Virtual",
+      "tags": [
+        "Gemini API",
+        "PyTorch",
+        "React",
+        "Full Stack"
+      ],
+      "prizes": "$25,000 in Cash & Cloud Credits"
+    },
+    {
+      "id": "hack-2",
+      "title": "FinTech Future Sprint 2026",
+      "organizer": "National Banking Association",
+      "domain": "FinTech",
+      "banner": "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&q=80&w=1000",
+      "startDate": "2026-08-25",
+      "endDate": "2026-08-27",
+      "maxTeamSize": 4,
+      "registeredTeamsCount": 88,
+      "description": "Revolutionizing financial inclusion, fraud detection systems, instant micro-payments, and automated credit scoring.",
+      "location": "Hybrid - Bengaluru",
+      "tags": [
+        "Node.js",
+        "PostgreSQL",
+        "Security",
+        "React"
+      ],
+      "prizes": "₹10,000,000 Incubation Fund"
+    },
+    {
+      "id": "hack-3",
+      "title": "DesignJam National UX Challenge",
+      "organizer": "India Design Council",
+      "domain": "UI/UX Design",
+      "banner": "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&q=80&w=1000",
+      "startDate": "2026-09-01",
+      "endDate": "2026-09-03",
+      "maxTeamSize": 3,
+      "registeredTeamsCount": 65,
+      "description": "Designing intuitive, accessible, and high-impact digital experiences for rural healthcare and vernacular education.",
+      "location": "Virtual",
+      "tags": [
+        "Figma",
+        "Accessibility",
+        "Research",
+        "Prototyping"
+      ],
+      "prizes": "Design Internships & $10,000"
+    },
+    {
+      "id": "hack-4",
+      "title": "SIH 2026",
+      "organizer": "Ministry of Education, Government of India",
+      "domain": "Social Good",
+      "banner": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=1000",
+      "startDate": "2026-10-10",
+      "endDate": "2026-10-12",
+      "maxTeamSize": 6,
+      "registeredTeamsCount": 2350,
+      "description": "Smart India Hackathon 2026 - a nationwide initiative to provide students with a platform to solve some of the pressing problems we face in our daily lives.",
+      "location": "Nodal Centers Across India",
+      "tags": [
+        "IoT",
+        "AI/ML",
+        "Agriculture",
+        "Healthcare",
+        "Cybersecurity",
+        "Web/Mobile App"
+      ],
+      "prizes": "₹1,00,000 per Problem Statement"
     }
   ]
 }
