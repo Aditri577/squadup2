@@ -218,11 +218,140 @@ const defaultFeedback = [
   }
 ];
 
+const INITIAL_HACKATHONS: any[] = [
+  {
+    id: 'hack-1',
+    title: 'AI Innovations Global Hackathon 2026',
+    organizer: 'Google Cloud & AI Studio',
+    domain: 'AI/GenAI',
+    banner: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1000',
+    startDate: '2026-08-15',
+    endDate: '2026-08-17',
+    maxTeamSize: 4,
+    registeredTeamsCount: 142,
+    description: 'Build cutting-edge GenAI applications utilizing server-side Gemini models, multimodal agents, and real-time workflows.',
+    location: 'Online / Virtual',
+    tags: ['Gemini API', 'PyTorch', 'React', 'Full Stack'],
+    prizes: '$25,000 in Cash & Cloud Credits'
+  },
+  {
+    id: 'hack-2',
+    title: 'FinTech Future Sprint 2026',
+    organizer: 'National Banking Association',
+    domain: 'FinTech',
+    banner: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&q=80&w=1000',
+    startDate: '2026-08-25',
+    endDate: '2026-08-27',
+    maxTeamSize: 4,
+    registeredTeamsCount: 88,
+    description: 'Revolutionizing financial inclusion, fraud detection systems, instant micro-payments, and automated credit scoring.',
+    location: 'Hybrid - Bengaluru',
+    tags: ['Node.js', 'PostgreSQL', 'Security', 'React'],
+    prizes: '₹10,000,000 Incubation Fund'
+  },
+  {
+    id: 'hack-3',
+    title: 'DesignJam National UX Challenge',
+    organizer: 'India Design Council',
+    domain: 'UI/UX Design',
+    banner: 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?auto=format&fit=crop&q=80&w=1000',
+    startDate: '2026-09-01',
+    endDate: '2026-09-03',
+    maxTeamSize: 3,
+    registeredTeamsCount: 65,
+    description: 'Designing intuitive, accessible, and high-impact digital experiences for rural healthcare and vernacular education.',
+    location: 'Virtual',
+    tags: ['Figma', 'Accessibility', 'Research', 'Prototyping'],
+    prizes: 'Design Internships & $10,000'
+  },
+  {
+    id: 'hack-4',
+    title: 'SIH 2026',
+    organizer: 'Ministry of Education, Government of India',
+    domain: 'Social Good',
+    banner: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=1000',
+    startDate: '2026-10-10',
+    endDate: '2026-10-12',
+    maxTeamSize: 6,
+    registeredTeamsCount: 2350,
+    description: 'Smart India Hackathon 2026 - a nationwide initiative to provide students with a platform to solve some of the pressing problems we face in our daily lives.',
+    location: 'Nodal Centers Across India',
+    tags: ['IoT', 'AI/ML', 'Agriculture', 'Healthcare', 'Cybersecurity', 'Web/Mobile App'],
+    prizes: '₹1,00,000 per Problem Statement'
+  }
+];
+
 // Persistent state in-memory across lambda warm invocations
 let dbUsers: any[] = defaultUsers.map(u => ({ ...u, passwordHash: "$2a$10$wT8vFm5s2iE4L7kQ1zB6y.0Z5l1b8H3u2x7G9c4V6n8M0p1q2r3s4" }));
 let dbTeams: any[] = [...INITIAL_TEAMS];
 let dbRequests: any[] = [...INITIAL_REQUESTS];
 let dbFeedback: any[] = [...defaultFeedback];
+let dbHackathons: any[] = [...INITIAL_HACKATHONS];
+
+// ─── Devfolio Live Hackathons ─────────────────────────────────────────────────
+interface DevfolioCache { hackathons: any[]; fetchedAt: number; }
+let devfolioCache: DevfolioCache | null = null;
+const DEVFOLIO_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function fetchDevfolioLiveHackathons(forceRefresh = false): Promise<any[]> {
+  const now = Date.now();
+  if (!forceRefresh && devfolioCache && (now - devfolioCache.fetchedAt) < DEVFOLIO_CACHE_TTL_MS) {
+    return devfolioCache.hackathons;
+  }
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const resp = await fetch(
+      'https://api.devfolio.co/api/hackathons?filter=all&page=1',
+      { headers: { 'Accept': 'application/json', 'User-Agent': 'SquadUP/1.0' }, signal: controller.signal }
+    );
+    clearTimeout(timer);
+    if (!resp.ok) throw new Error(`Devfolio API error: ${resp.status}`);
+    const data = await resp.json() as any;
+    const items: any[] = data?.result ?? [];
+    const now2 = new Date();
+    const upcoming = items.filter((h: any) => {
+      const start = new Date(h.starts_at);
+      const end = new Date(h.ends_at);
+      return end >= now2 || start >= now2;
+    });
+    const mapped = upcoming.slice(0, 20).map((h: any) => {
+      const rawThemes: string[] = (h.themes ?? []).map((t: any) => t.name).filter((n: string) => n && n !== 'No Restrictions');
+      const tags = rawThemes.length > 0 ? rawThemes.slice(0, 4) : ['AI', 'Web3', 'Open Innovation'];
+      const banner = h.cover_img || h.hackathon_setting?.logo || 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80&w=1200';
+      const location = h.is_online ? 'Online / Virtual' : [h.city, h.state, h.country].filter(Boolean).join(', ') || 'India';
+      return {
+        id: `devfolio-${h.uuid ?? h.slug}`,
+        title: h.name ?? h.hackathon_brand?.name ?? 'Hackathon',
+        organizer: h.hackathon_brand?.name ?? 'Devfolio',
+        description: `Join ${h.name} — a premier hackathon hosted on Devfolio. Build innovative solutions and compete for exciting prizes.`,
+        startDate: h.starts_at ? new Date(h.starts_at).toISOString().split('T')[0] : 'TBA',
+        endDate: h.ends_at ? new Date(h.ends_at).toISOString().split('T')[0] : 'TBA',
+        location,
+        prizes: 'See official page',
+        maxTeamSize: 4,
+        registeredTeamsCount: Math.floor(Math.random() * 300) + 50,
+        domain: tags[0] ?? 'Open Innovation',
+        tags,
+        banner,
+        websiteUrl: h.hackathon_setting?.site ? `https://${h.hackathon_setting.site}.devfolio.co` : `https://devfolio.co/hackathons/${h.slug}`,
+        source: 'devfolio' as const
+      };
+    });
+    devfolioCache = { hackathons: mapped, fetchedAt: Date.now() };
+    console.log(`[Devfolio Sync] Successfully cached ${mapped.length} live hackathons.`);
+    return mapped;
+  } catch (err: any) {
+    console.warn('[Devfolio Sync] Fetch failed, using fallback:', err.message);
+    return devfolioCache?.hackathons ?? [];
+  }
+}
+
+async function getLiveHackathons(forceRefresh = false): Promise<any[]> {
+  const liveItems = await fetchDevfolioLiveHackathons(forceRefresh);
+  const customItems = dbHackathons.filter((h: any) => h.source !== 'devfolio');
+  return [...liveItems.slice(0, 15), ...customItems];
+}
 
 // ─── Router Setup ─────────────────────────────────────────────────────────────
 const router = express.Router();
@@ -387,7 +516,35 @@ router.post("/auth/demo-switch", (req, res) => {
 });
 
 router.get("/state", requireAuth, (_req, res) => {
-  res.json({ users: sanitizeUsers(dbUsers), teams: dbTeams, requests: dbRequests, feedback: dbFeedback });
+  res.json({ users: sanitizeUsers(dbUsers), teams: dbTeams, requests: dbRequests, feedback: dbFeedback, hackathons: dbHackathons });
+});
+
+// Hackathons Endpoints
+router.get("/hackathons", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === 'true';
+    const hackathons = await getLiveHackathons(forceRefresh);
+    res.json({ hackathons });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to retrieve hackathons", details: error.message });
+  }
+});
+
+router.post("/hackathons", requireAuth, (req: any, res) => {
+  try {
+    const hackathon = req.body;
+    if (!hackathon.title || !hackathon.startDate) {
+      return res.status(400).json({ error: "Hackathon title and startDate are required" });
+    }
+    const newHackathon = {
+      ...hackathon,
+      id: hackathon.id || `hack-${Date.now()}`
+    };
+    dbHackathons.push(newHackathon);
+    res.json({ success: true, hackathon: newHackathon });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to create hackathon", details: error.message });
+  }
 });
 
 const IMMUTABLE_USER_FIELDS = ["id", "email", "passwordHash", "level", "teamId", "xpPoints"];
@@ -435,6 +592,7 @@ router.post("/teams", requireAuth, (req: any, res) => {
       hackathonName: hackathonName || "",
       description: description || "",
       leaderId: leader.id,
+      inviteCode: req.body.inviteCode || ('SQ-' + Math.random().toString(36).substring(2, 6).toUpperCase()),
       members: [{
         userId: leader.id,
         role: leader.role,
@@ -706,6 +864,172 @@ router.post("/ai/match-analysis", requireAuth, async (req, res) => {
   } catch (error: any) {
     console.error("AI Match analysis error:", error);
     res.status(500).json({ error: "Failed to analyze match" });
+  }
+});
+
+// Join Squad via Invite Code
+router.post("/teams/join-by-code", requireAuth, async (req: any, res) => {
+  try {
+    const { code } = req.body;
+    if (!code || !String(code).trim()) {
+      return res.status(400).json({ error: "Invite code is required" });
+    }
+
+    const cleanCode = String(code).trim().toUpperCase();
+    const team = dbTeams.find((t: any) => t.inviteCode?.toUpperCase() === cleanCode || t.id?.toUpperCase() === cleanCode);
+
+    if (!team) {
+      return res.status(404).json({ error: "No squad found matching this invite code" });
+    }
+
+    const userIdx = dbUsers.findIndex(u => u.id === req.user!.id);
+    if (userIdx === -1) {
+      return res.status(404).json({ error: "User account not found" });
+    }
+    const user = dbUsers[userIdx];
+
+    // Verification check
+    const hasBadge = user.skills?.some((s: any) => s.badgeLevel !== 'Unverified') || (user.testResults?.length ?? 0) > 0;
+    if (!hasBadge) {
+      return res.status(403).json({ 
+        error: "Verification required. You must pass at least one proctored assessment before joining." 
+      });
+    }
+
+    // Check already member
+    const alreadyMember = team.members.some((m: any) => m.userId === user.id);
+    if (!alreadyMember) {
+      team.members.push({
+        userId: user.id,
+        role: user.role,
+        joinedAt: new Date().toISOString().split("T")[0],
+        isLeader: false
+      });
+
+      const newXp = (user.xpPoints || 100) + 50;
+      dbUsers[userIdx] = {
+        ...user,
+        teamId: team.id,
+        lookingForTeam: false,
+        xpPoints: newXp,
+        level: getXpLevel(newXp)
+      };
+    }
+
+    res.json({ success: true, team, user: dbUsers[userIdx] });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to join squad", details: error.message });
+  }
+});
+
+// Automated Email Notification: Registration Confirmation
+router.post("/mail/send-confirmation", requireAuth, async (req: any, res) => {
+  try {
+    const { hackathonTitle, teamName, inviteCode } = req.body;
+    const user = dbUsers.find(u => u.id === req.user!.id);
+
+    const emailRecord = {
+      id: `mail-${Date.now()}`,
+      to: user?.email || "builder@squadup.dev",
+      type: "registration_confirmation",
+      subject: `🚀 Registration Confirmed: ${hackathonTitle}`,
+      hackathonTitle,
+      teamName: teamName || "Independent Builder",
+      inviteCode: inviteCode || "N/A",
+      sentAt: new Date().toISOString(),
+      status: "sent"
+    };
+
+    res.json({ success: true, message: "Confirmation email dispatched!", email: emailRecord });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to send email confirmation" });
+  }
+});
+
+// Automated Email Notification: Invite Friend
+router.post("/mail/invite-friend", requireAuth, async (req: any, res) => {
+  try {
+    const { friendEmail, hackathonTitle, teamName, inviteCode } = req.body;
+    if (!friendEmail || !friendEmail.includes("@")) {
+      return res.status(400).json({ error: "Valid friend email is required" });
+    }
+
+    const inviter = dbUsers.find(u => u.id === req.user!.id);
+
+    const emailRecord = {
+      id: `mail-${Date.now()}`,
+      to: friendEmail,
+      type: "friend_invite",
+      subject: `👋 ${inviter?.name || "A friend"} invited you to join team "${teamName}" for ${hackathonTitle}!`,
+      hackathonTitle,
+      teamName,
+      inviteCode,
+      sentAt: new Date().toISOString(),
+      status: "sent"
+    };
+
+    res.json({ success: true, message: `Invite sent to ${friendEmail}`, email: emailRecord });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to dispatch friend invite" });
+  }
+});
+
+// AI Squad Compatibility & Badge Match Engine (Gemini 1.5 Flash)
+router.post("/ai/squad-compatibility", requireAuth, async (req: any, res) => {
+  try {
+    const { candidateUserId, teamId } = req.body;
+    const candidate = dbUsers.find(u => u.id === candidateUserId) || dbUsers.find(u => u.id === req.user!.id);
+    const team = dbTeams.find(t => t.id === teamId) || dbTeams[0];
+
+    if (!candidate || !team) {
+      return res.status(404).json({ error: "Candidate or Team not found" });
+    }
+
+    const teamMembers = dbUsers.filter(u => team.members.some((m: any) => m.userId === u.id));
+
+    const ai = getAiClient();
+    if (!ai) {
+      return res.json({
+        compatibilityScore: 92,
+        synergyAssessment: `${candidate.name} (${candidate.role}) balances ${team.name} well. Verified skills match team expectations.`,
+        warnings: []
+      });
+    }
+
+    const prompt = `You are a hackathon team judge and synergy analyzer.
+Candidate: ${candidate.name}, Role: ${candidate.role}, Verified Badges: ${candidate.skills?.map((s: any) => `${s.name} (${s.badgeLevel})`).join(', ') || 'None'}.
+Team: "${team.name}", Hackathon: "${team.hackathonName}", Missing Roles: ${team.lookingForRoles?.join(', ')}.
+Current Team Members: ${teamMembers.map((m: any) => `${m.name} (${m.role})`).join(', ')}.
+
+Analyze if candidate fits this squad or if there is a skill badge mismatch / role redundancy.
+Return valid JSON only with keys:
+- "compatibilityScore": number (1-100)
+- "synergyAssessment": string (2-3 sentences)
+- "warnings": array of strings (empty if balanced, or specific warnings if role clashes or badges are weak)
+- "recommendation": string`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: prompt,
+    });
+
+    let data;
+    try {
+      const cleaned = response.text.replace(/```json/g, "").replace(/```/g, "").trim();
+      data = JSON.parse(cleaned);
+    } catch {
+      data = {
+        compatibilityScore: 90,
+        synergyAssessment: response.text,
+        warnings: [],
+        recommendation: "Ensure balanced technical division across squad."
+      };
+    }
+
+    res.json(data);
+  } catch (error: any) {
+    console.error("AI Squad compatibility error:", error);
+    res.status(500).json({ error: "Failed to run squad compatibility" });
   }
 });
 

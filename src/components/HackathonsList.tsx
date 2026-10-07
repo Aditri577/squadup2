@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Hackathon } from '../types';
+import { Hackathon, User } from '../types';
+import { HackathonRegisterModal } from './HackathonRegisterModal';
 import { 
   Trophy, 
   Calendar, 
@@ -15,13 +16,18 @@ import {
   Github,
   Globe,
   Video,
-  X
+  X,
+  UserPlus,
+  RefreshCw,
+  Radio
 } from 'lucide-react';
 import { useToast } from './Toast';
 
 interface HackathonsListProps {
   hackathons: Hackathon[];
   onSelectHackathonFilter: (hackathonName: string) => void;
+  currentUser?: User;
+  onCreateTeam?: (teamData: any) => void;
 }
 
 interface SubmittedProject {
@@ -67,7 +73,9 @@ const INITIAL_PROJECTS: SubmittedProject[] = [
 
 export const HackathonsList: React.FC<HackathonsListProps> = ({
   hackathons,
-  onSelectHackathonFilter
+  onSelectHackathonFilter,
+  currentUser,
+  onCreateTeam
 }) => {
   const toast = useToast();
   const [projects, setProjects] = useState<SubmittedProject[]>(() => {
@@ -75,6 +83,7 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
     return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
   });
 
+  const [registeringHackathon, setRegisteringHackathon] = useState<Hackathon | null>(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [selectedHackathonTitle, setSelectedHackathonTitle] = useState(hackathons[0]?.title || '');
 
@@ -220,14 +229,22 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
               </div>
             </div>
 
-            {/* Footer Action */}
-            <div className="p-6 pt-0">
+            {/* Footer Actions */}
+            <div className="p-6 pt-0 flex flex-col sm:flex-row gap-2.5">
+              <button
+                onClick={() => setRegisteringHackathon(h)}
+                className="flex-1 py-3 px-4 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-purple-500/25 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <UserPlus size={14} />
+                <span>Register</span>
+              </button>
+
               <button
                 onClick={() => onSelectHackathonFilter(h.title)}
-                className="w-full py-3 rounded-full bg-[#0b0813] border border-white/15 hover:border-purple-400/50 text-white text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-full bg-[#0b0813] border border-white/15 hover:border-purple-400/50 text-white text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span>Find Teammates For This Hack</span>
-                <ArrowRight size={14} />
+                <span>Find Squad</span>
+                <ArrowRight size={13} />
               </button>
             </div>
           </div>
@@ -416,6 +433,52 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* HACKATHON REGISTRATION MODAL */}
+      {registeringHackathon && (
+        <HackathonRegisterModal
+          hackathon={registeringHackathon}
+          currentUser={currentUser || {
+            id: 'user-demo',
+            name: 'Hackathon Builder',
+            email: 'builder@squadup.dev',
+            avatar: '',
+            role: 'Full Stack Developer',
+            college: 'Tech University',
+            bio: '',
+            location: 'Global',
+            skills: [],
+            testResults: [],
+            preferredDomains: [],
+            lookingForTeam: true,
+            joinedAt: new Date().toISOString()
+          }}
+          onClose={() => setRegisteringHackathon(null)}
+          onJoinTeamMode={() => {
+            const hTitle = registeringHackathon.title;
+            setRegisteringHackathon(null);
+            onSelectHackathonFilter(hTitle);
+          }}
+          onCreateTeam={(teamData) => {
+            if (onCreateTeam) {
+              onCreateTeam({
+                name: teamData.teamName,
+                hackathonId: registeringHackathon.id,
+                hackathonName: registeringHackathon.title,
+                description: teamData.description,
+                lookingForRoles: teamData.roles,
+                inviteCode: teamData.inviteCode,
+                projectIdea: {
+                  title: teamData.projectIdeaTitle,
+                  description: teamData.description,
+                  techStack: ['React', 'Node.js', 'Tailwind', 'AI']
+                }
+              });
+            }
+            setRegisteringHackathon(null);
+          }}
+        />
       )}
 
     </div>

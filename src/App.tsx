@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { User, Team, TeamRequest, UserRole, TeammateFeedback } from './types';
+import { User, Team, TeamRequest, UserRole, TeammateFeedback, Hackathon } from './types';
 import { INITIAL_USERS, INITIAL_HACKATHONS, INITIAL_TEAMS, INITIAL_REQUESTS } from './data/mockData';
 import { Header } from './components/Header';
 import { TeammateDiscovery } from './components/TeammateDiscovery';
@@ -15,6 +15,7 @@ import { LeaderboardView } from './components/LeaderboardView';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
 import { VerificationGate } from './components/VerificationGate';
 import { LandingPage } from './components/LandingPage';
+import { SquadJoinModal } from './components/SquadJoinModal';
 import { api, ApiError, getToken, setToken, clearToken, fetchDemoMode } from './utils/api';
 import { useToast } from './components/Toast';
 
@@ -51,16 +52,20 @@ function AppShell() {
   const [teams, setTeams] = useState<Team[]>(INITIAL_TEAMS);
   const [requests, setRequests] = useState<TeamRequest[]>(INITIAL_REQUESTS);
   const [feedbacks, setFeedbacks] = useState<TeammateFeedback[]>([]);
-  const [hackathons] = useState(INITIAL_HACKATHONS);
+  const [hackathons, setHackathons] = useState<Hackathon[]>(INITIAL_HACKATHONS);
 
   const [showRequestsModal, setShowRequestsModal] = useState(false);
+  const [showSquadJoinModal, setShowSquadJoinModal] = useState(false);
 
   const loadState = useCallback(async () => {
-    const data = await api<{ users: User[]; teams: Team[]; requests: TeamRequest[]; feedback: TeammateFeedback[] }>('/api/state');
+    const data = await api<{ users: User[]; teams: Team[]; requests: TeamRequest[]; feedback: TeammateFeedback[]; hackathons?: Hackathon[] }>('/api/state');
     setUsers(data.users || []);
     setTeams(data.teams || []);
     setRequests(data.requests || []);
     setFeedbacks(data.feedback || []);
+    if (data.hackathons && data.hackathons.length > 0) {
+      setHackathons(data.hackathons);
+    }
     return data;
   }, []);
 
@@ -288,6 +293,7 @@ function AppShell() {
         onOpenRequestsModal={() => setShowRequestsModal(true)}
         onLogout={signOut}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onOpenSquadJoinModal={() => setShowSquadJoinModal(true)}
       />
 
       <motion.main
@@ -404,6 +410,8 @@ function AppShell() {
             element={
               <HackathonsList
                 hackathons={hackathons}
+                currentUser={currentUser}
+                onCreateTeam={handleCreateTeam}
                 onSelectHackathonFilter={(hackathonName) => {
                   setHackathonFilter(hackathonName);
                   navigate('/discover');
@@ -424,6 +432,24 @@ function AppShell() {
           onRejectRequest={(id) => handleRespondToRequest(id, 'rejected')}
         />
       )}
+
+      {/* GLOBAL SQUAD JOIN WITH INVITE CODE MODAL */}
+      <SquadJoinModal
+        isOpen={showSquadJoinModal}
+        onClose={() => setShowSquadJoinModal(false)}
+        currentUser={currentUser}
+        allUsers={users}
+        teams={teams}
+        onJoinTeam={(teamId) => {
+          handleUpdateUser({
+            ...currentUser,
+            teamId,
+            lookingForTeam: false
+          });
+          navigate('/teams');
+        }}
+        onNavigateToAssessment={() => navigate('/assessment')}
+      />
 
       <CommandPaletteModal
         isOpen={isCommandPaletteOpen}

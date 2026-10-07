@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
-import { Plus, CheckCircle2, Clock, AlertCircle, Sparkles, Trash2, User as UserIcon } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, AlertCircle, Sparkles, Trash2, User as UserIcon, GripVertical, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useToast } from './Toast';
 
 export interface KanbanTask {
   id: string;
@@ -69,12 +70,17 @@ const INITIAL_TASKS: KanbanTask[] = [
 ];
 
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({ teamMembers, hackathonName }) => {
+  const toast = useToast();
   const [tasks, setTasks] = useState<KanbanTask[]>(INITIAL_TASKS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [newTaskAssignee, setNewTaskAssignee] = useState<string>(teamMembers[0]?.name || 'Unassigned');
+
+  // Drag and drop state
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverColId, setDragOverColId] = useState<KanbanTask['status'] | null>(null);
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,14 +103,58 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ teamMembers, hackathon
     setNewTaskTitle('');
     setNewTaskDesc('');
     setShowAddModal(false);
+    toast.success('Sprint task created! 📌');
   };
 
   const handleMoveTask = (taskId: string, newStatus: KanbanTask['status']) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || task.status === newStatus) return;
+
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+
+    if (newStatus === 'done') {
+      toast.success(`Task "${task.title.slice(0, 24)}..." marked Done! 🎉`);
+    } else if (newStatus === 'in_progress') {
+      toast.info(`Task moved to In Progress ⏳`);
+    } else {
+      toast.info(`Task moved to ${newStatus.replace('_', ' ')} 📋`);
+    }
   };
 
   const handleDeleteTask = (taskId: string) => {
     setTasks(prev => prev.filter(t => t.id !== taskId));
+    toast.info('Task deleted from board.');
+  };
+
+  const handleGenerateAiSprint = () => {
+    const aiTasks: KanbanTask[] = [
+      {
+        id: `ai-${Date.now()}-1`,
+        title: 'Build Prototype User Journey & Figma Flow',
+        description: 'Map out key developer interactions for the hackathon MVP.',
+        status: 'ai_suggested',
+        priority: 'high',
+        category: 'UI/UX'
+      },
+      {
+        id: `ai-${Date.now()}-2`,
+        title: 'Deploy Production API & Add Healthcheck',
+        description: 'Verify CORS, rate limiting, and database connectivity.',
+        status: 'ai_suggested',
+        priority: 'medium',
+        category: 'DevOps'
+      },
+      {
+        id: `ai-${Date.now()}-3`,
+        title: 'Benchmark Latency on AI Inference Route',
+        description: 'Tune Gemini prompt tokens to respond under 800ms.',
+        status: 'ai_suggested',
+        priority: 'medium',
+        category: 'AI Engine'
+      }
+    ];
+    setTasks(prev => [...aiTasks, ...prev]);
+    toast.success('3 AI-recommended sprint tasks added! 🤖✨');
   };
 
   const columns: { id: KanbanTask['status']; title: string; icon: React.ReactNode; color: string }[] = [
@@ -129,21 +179,55 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ teamMembers, hackathon
           <p className="text-slate-400 text-xs mt-0.5">Track deliverables, assign roles, and move tasks seamlessly across columns.</p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white text-sm font-semibold rounded-xl transition shadow-lg glow-cyan cursor-pointer shrink-0"
-        >
-          <Plus size={18} />
-          Add Sprint Task
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={handleGenerateAiSprint}
+            className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-xs font-bold rounded-xl transition shadow-xs cursor-pointer shrink-0"
+          >
+            <Wand2 size={15} />
+            <span>AI Sprint Tasks</span>
+          </button>
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white text-sm font-semibold rounded-xl transition shadow-lg glow-cyan cursor-pointer shrink-0"
+          >
+            <Plus size={18} />
+            Add Sprint Task
+          </button>
+        </div>
       </div>
 
-      {/* Grid Columns */}
+      {/* Grid Columns with Drag and Drop */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {columns.map(col => {
           const colTasks = tasks.filter(t => t.status === col.id);
+          const isOver = dragOverColId === col.id;
           return (
-            <div key={col.id} className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 flex flex-col min-h-[420px]">
+            <div 
+              key={col.id} 
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverColId !== col.id) setDragOverColId(col.id);
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                if (dragOverColId === col.id) setDragOverColId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const taskId = e.dataTransfer.getData('text/plain') || draggedTaskId;
+                if (taskId) handleMoveTask(taskId, col.id);
+                setDraggedTaskId(null);
+                setDragOverColId(null);
+              }}
+              className={`bg-slate-900/60 border rounded-2xl p-4 flex flex-col min-h-[440px] transition-all duration-200 ${
+                isOver 
+                  ? 'border-indigo-500/90 bg-indigo-950/25 ring-2 ring-indigo-500/40 scale-[1.01]' 
+                  : 'border-slate-800/80'
+              }`}
+            >
               {/* Column Header */}
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
@@ -163,14 +247,31 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ teamMembers, hackathon
                   {colTasks.map(task => (
                     <motion.div
                       key={task.id}
+                      draggable={true}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', task.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        setDraggedTaskId(task.id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedTaskId(null);
+                        setDragOverColId(null);
+                      }}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       layout
-                      className="bg-slate-950/80 border border-slate-800 hover:border-slate-700 p-3.5 rounded-xl shadow-md space-y-2 group transition"
+                      className={`bg-slate-950/80 border p-3.5 rounded-xl shadow-md space-y-2 group transition select-none cursor-grab active:cursor-grabbing ${
+                        draggedTaskId === task.id
+                          ? 'opacity-40 border-indigo-500 ring-2 ring-indigo-500/50 scale-[0.98]'
+                          : 'border-slate-800 hover:border-slate-700'
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-semibold text-sm text-white line-clamp-2">{task.title}</h4>
+                        <div className="flex items-start gap-1.5 flex-1">
+                          <GripVertical size={14} className="text-slate-600 group-hover:text-slate-400 mt-0.5 shrink-0" />
+                          <h4 className="font-semibold text-sm text-white line-clamp-2">{task.title}</h4>
+                        </div>
                         <button
                           onClick={() => handleDeleteTask(task.id)}
                           className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition p-1"
@@ -240,7 +341,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ teamMembers, hackathon
                   ))}
                 </AnimatePresence>
 
-                {colTasks.length === 0 && (
+                {isOver && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="border-2 border-dashed border-indigo-500/70 bg-indigo-500/10 rounded-xl p-3.5 text-center text-xs font-semibold text-indigo-300 flex items-center justify-center gap-2"
+                  >
+                    <Sparkles size={14} className="text-indigo-400" />
+                    <span>Drop task here to move to {col.title}</span>
+                  </motion.div>
+                )}
+
+                {colTasks.length === 0 && !isOver && (
                   <div className="border border-dashed border-slate-800/80 rounded-xl p-6 text-center text-slate-500 text-xs">
                     No tasks in {col.title.toLowerCase()}
                   </div>
