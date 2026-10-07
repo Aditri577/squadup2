@@ -552,6 +552,226 @@
       "xpPoints": 100,
       "level": 1,
       "passwordHash": "$2b$10$UelRCJzvCPOK4FLREK.TNOmqCe2XJRoKeCs84KoUBIdJ/crWZkax."
+    },
+    {
+      "id": "usr-1789453940184",
+      "name": "gautam",
+      "email": "raghav@gmail.com",
+      "avatar": "duo-owl",
+      "role": "Backend Developer",
+      "college": "IMS engineerning college",
+      "location": "India",
+      "bio": "Verified Backend Developer looking for hackathon teammates.",
+      "skills": [
+        {
+          "id": "sk-1789454017584",
+          "name": "Database Management (SQL)",
+          "category": "Database Management (SQL)",
+          "selfRating": 3,
+          "badgeLevel": "Red",
+          "scorePercent": 0,
+          "verifiedAt": "2026-09-15"
+        }
+      ],
+      "testResults": [
+        {
+          "id": "res-1789454013320",
+          "userId": "usr-1789453940184",
+          "skillName": "Database Management (SQL)",
+          "category": "Database Management (SQL)",
+          "scorePercent": 0,
+          "totalQuestions": 20,
+          "correctCount": 0,
+          "badgeLevel": "Red",
+          "warningCount": 3,
+          "terminated": true,
+          "terminationReason": "Auto-submitted after 3 proctoring violations. Final flag: Tab switched or browser window minimized during test execution!",
+          "completedAt": "2026-09-15T06:33:33.320Z",
+          "topicBreakdown": {
+            "JOIN Types": {
+              "correct": 0,
+              "total": 1
+            },
+            "Composite Index": {
+              "correct": 0,
+              "total": 1
+            },
+            "Least Privilege": {
+              "correct": 0,
+              "total": 1
+            },
+            "ACID Properties": {
+              "correct": 0,
+              "total": 1
+            },
+            "JSONB Data Type": {
+              "correct": 0,
+              "total": 1
+            },
+            "TRUNCATE vs DELETE": {
+              "correct": 0,
+              "total": 1
+            },
+            "B-Tree Indexing": {
+              "correct": 0,
+              "total": 1
+            },
+            "NULL handling": {
+              "correct": 0,
+              "total": 1
+            },
+            "HAVING vs WHERE": {
+              "correct": 0,
+              "total": 1
+            },
+            "Materialized Views": {
+              "correct": 0,
+              "total": 1
+            },
+            "Foreign Key": {
+              "correct": 0,
+              "total": 1
+            },
+            "Connection Pooling": {
+              "correct": 0,
+              "total": 1
+            },
+            "Isolation Levels": {
+              "correct": 0,
+              "total": 1
+            },
+            "Deadlock": {
+              "correct": 0,
+              "total": 1
+            },
+            "Window Functions": {
+              "correct": 0,
+              "total": 1
+            },
+            "Normalization": {
+              "correct": 0,
+              "total": 1
+            },
+            "EXISTS vs IN": {
+              "correct": 0,
+              "total": 1
+            },
+            "CAP Theorem": {
+              "correct": 0,
+              "total": 1
+            },
+            "EXPLAIN ANALYZE": {
+              "correct": 0,
+              "total": 1
+            },
+            "WAL (Write-Ahead Logging)": {
+              "correct": 0,
+              "total": 1
+            }
+          },
+          "antiCheatLogs": [
+            {
+              "id": "acl-1789454013320-term",
+              "timestamp": "2026-09-15T06:33:33.320Z",
+              "event": "PROCTORING_TERMINATED",
+              "message": "Auto-submitted after 3 proctoring violations. Final flag: Tab switched or browser window minimized during test execution!",
+              "severity": "high"
+            },
+            {
+              "id": "acl-1789454013317-04so",
+              "timestamp": "2026-09-15T06:33:33.317Z",
+              "event": "TAB_SWITCH",
+              "message": "Tab switched or browser window minimized during test execution!",
+              "severity": "high"
+            },
+            {
+              "id": "acl-1789454013314-zvc1",
+              "timestamp": "2026-09-15T06:33:33.314Z",
+              "event": "WINDOW_BLUR",
+              "message": "Browser lost window focus or split-screen detected.",
+              "severity": "medium"
+            },
+            {
+              "id": "acl-1789454011211-b665",
+              "timestamp": "2026-09-15T06:33:31.211Z",
+              "event": "MOUSE_LEAVE",
+              "message": "Mouse pointer exited active browser viewport.",
+              "severity": "low"
+            },
+            {
+              "id": "acl-1789454007906-w8x0",
+              "timestamp": "2026-09-15T06:33:27.906Z",
+              "event": "TAB_SWITCH",
+              "message": "Tab switched or browser window minimized during test execution!",
+              "severity": "high"
+            },
+            {
+              "id": "acl-1789454007899-gj2e",
+              "timestamp": "2026-09-15T06:33:27.899Z",
+              "event": "WINDOW_BLUR",
+              "message": "Browser lost window focus or split-screen detected.",
+              "severity": "medium"
+            },
+            {
+              "id": "acl-1789454005534-1fl2",
+              "timestamp": "2026-09-15T06:33:25.534Z",
+              "event": "MOUSE_LEAVE",
+              "message": "Mouse pointer exited active browser viewport.",
+              "severity": "low"
+            },
+            {
+              "id": "acl-1789453999008-hbaa",
+              "timestamp": "2026-09-15T06:33:19.008Z",
+              "event": "FULLSCREEN_EXIT",
+              "message": "Fullscreen mode exited by candidate.",
+              "severity": "high"
+            },
+            {
+              "id": "acl-1789453996736-xprl",
+              "timestamp": "2026-09-15T06:33:16.736Z",
+              "event": "MOUSE_LEAVE",
+              "message": "Mouse pointer exited active browser viewport.",
+              "severity": "low"
+            },
+            {
+              "id": "acl-1789453995574-qppi",
+              "timestamp": "2026-09-15T06:33:15.574Z",
+              "event": "MOUSE_LEAVE",
+              "message": "Mouse pointer exited active browser viewport.",
+              "severity": "low"
+            },
+            {
+              "id": "acl-1789453994864-gg88",
+              "timestamp": "2026-09-15T06:33:14.864Z",
+              "event": "MOUSE_LEAVE",
+              "message": "Mouse pointer exited active browser viewport.",
+              "severity": "low"
+            },
+            {
+              "id": "acl-1789453994071-9nj3",
+              "timestamp": "2026-09-15T06:33:14.071Z",
+              "event": "MOUSE_LEAVE",
+              "message": "Mouse pointer exited active browser viewport.",
+              "severity": "low"
+            },
+            {
+              "id": "acl-1789453989399-nbeb",
+              "timestamp": "2026-09-15T06:33:09.399Z",
+              "event": "MOUSE_LEAVE",
+              "message": "Mouse pointer exited active browser viewport.",
+              "severity": "low"
+            }
+          ]
+        }
+      ],
+      "joinedAt": "2026-09-15",
+      "preferredDomains": [
+        "AI/GenAI"
+      ],
+      "lookingForTeam": true,
+      "xpPoints": 100,
+      "level": 1,
+      "passwordHash": "$2b$10$14uIBt1fvc1sH9fDKDk70Oj15jx2NHP1mmi54CZvyf79Mo4T.b2eG"
     }
   ],
   "teams": [
