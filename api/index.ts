@@ -515,8 +515,10 @@ router.post("/auth/demo-switch", (req, res) => {
   }
 });
 
-router.get("/state", requireAuth, (_req, res) => {
-  res.json({ users: sanitizeUsers(dbUsers), teams: dbTeams, requests: dbRequests, feedback: dbFeedback, hackathons: dbHackathons });
+router.get("/state", requireAuth, async (_req, res) => {
+  const hackathons = await getLiveHackathons();
+  res.json({ users: sanitizeUsers(dbUsers), teams: dbTeams, requests: dbRequests, feedback: dbFeedback, hackathons
+   });
 });
 
 // Hackathons Endpoints
