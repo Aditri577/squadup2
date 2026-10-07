@@ -1,0 +1,18 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Local database (contains real user data + password hashes)
+db.json
+
+# Large archives & zip backups
+*.zip
+Archive.zip
+
+# Dev task tracking
+task.md

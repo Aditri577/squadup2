@@ -1,0 +1,6 @@
+{
+  "name": "SquadUP",
+  "description": "Hackathon team formation platform with timed skill verification tests, color-coded badges, anti-cheat monitoring, teammate matching, and team balance analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
