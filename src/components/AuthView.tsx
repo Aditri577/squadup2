@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from "firebase/auth";
 
 import { auth, db } from "../firebase";
@@ -199,27 +201,8 @@ const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    if (isSubmitting) return;
-
-    setError("");
-    setSuccessMessage("");
-
+  const processGoogleUser = async (firebaseUser: any) => {
     try {
-      setIsSubmitting(true);
-
-      const provider = new GoogleAuthProvider();
-
-      provider.setCustomParameters({
-        prompt: "select_account",
-      });
-
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
-
-      /*
-       * Save real Google user to Firestore.
-       */
       await setDoc(
         doc(db, "users", firebaseUser.uid),
         {
@@ -231,62 +214,104 @@ const AuthView: React.FC<AuthViewProps> = ({
         },
         { merge: true }
       );
+    } catch (fsErr) {
+      console.warn("Firestore user sync non-blocking error:", fsErr);
+    }
 
-      /*
-       * Get Firebase ID token.
-       */
-      const idToken = await firebaseUser.getIdToken();
+    const idToken = await firebaseUser.getIdToken();
+    const response = await api<AuthResponse>("/api/auth/google", {
+      method: "POST",
+      body: {
+        idToken,
+        email: firebaseUser.email,
+        name: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        avatar: firebaseUser.photoURL,
+      },
+    });
 
-      /*
-       * Send Firebase user information to backend.
-       */
-      const response = await api<AuthResponse>("/api/auth/google", {
-        method: "POST",
-        body: {
-          idToken,
-          email: firebaseUser.email,
-          name: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-        },
+    completeAuth(response.token, response.user);
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user && isMounted) {
+          setIsSubmitting(true);
+          processGoogleUser(result.user).catch((err) => {
+            console.error("Redirect Auth Error:", err);
+            setError(describeAuthError(err));
+          }).finally(() => {
+            if (isMounted) setIsSubmitting(false);
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Redirect Result Error:", err);
+        if (isMounted) setError(describeAuthError(err));
       });
+    return () => { isMounted = false; };
+  }, []);
 
-      completeAuth(response.token, response.user);
+  const handleGoogleSignIn = async () => {
+    if (isSubmitting) return;
+
+    setError("");
+    setSuccessMessage("");
+
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: "select_account",
+    });
+
+    try {
+      setIsSubmitting(true);
+      const result = await signInWithPopup(auth, provider);
+      await processGoogleUser(result.user);
     } catch (err: unknown) {
       console.error("Google Sign-In Error:", err);
-
       const firebaseError = err as { code?: string };
 
       if (firebaseError.code === "auth/popup-closed-by-user") {
+        setIsSubmitting(false);
         setError("Google sign-in was cancelled.");
         return;
       }
 
       if (firebaseError.code === "auth/popup-blocked") {
-        setError(
-          "Google popup was blocked. Please allow popups for this website."
-        );
-        return;
+        // Fallback to seamless full-page redirect!
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr) {
+          setIsSubmitting(false);
+          setError("Google popup was blocked. Please allow popups or use email login.");
+          return;
+        }
       }
 
       if (firebaseError.code === "auth/cancelled-popup-request") {
+        setIsSubmitting(false);
         return;
       }
 
       if (firebaseError.code === "auth/unauthorized-domain") {
+        setIsSubmitting(false);
         setError(
-          "This domain is not authorized in Firebase. Add it in Firebase Authentication → Settings → Authorized domains."
+          "This domain is not authorized in Firebase. Add squadup-2.vercel.app in Firebase Console → Authentication → Settings → Authorized domains."
         );
         return;
       }
 
       if (firebaseError.code === "auth/network-request-failed") {
+        setIsSubmitting(false);
         setError("Network error. Please check your internet connection.");
         return;
       }
 
-      setError(describeAuthError(err));
-    } finally {
       setIsSubmitting(false);
+      setError(describeAuthError(err));
     }
   };
 

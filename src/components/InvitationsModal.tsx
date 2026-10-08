@@ -1,6 +1,7 @@
 import React from 'react';
 import { TeamRequest } from '../types';
 import { X, Check, Bell, UserPlus, ShieldCheck, CornerDownRight } from 'lucide-react';
+import { renderAvatar } from '../utils/avatars';
 
 interface InvitationsModalProps {
   requests: TeamRequest[];
@@ -50,7 +51,9 @@ export const InvitationsModal: React.FC<InvitationsModalProps> = ({
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <img src={req.senderAvatar} alt={req.senderName} className="w-10 h-10 rounded-xl object-cover shrink-0" />
+                  <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-750 flex items-center justify-center p-0.5 shrink-0">
+                    {renderAvatar(req.senderAvatar, "w-full h-full")}
+                  </div>
                   <div>
                     <h4 className="font-bold text-slate-900 dark:text-white text-sm">
                       {req.senderName}
