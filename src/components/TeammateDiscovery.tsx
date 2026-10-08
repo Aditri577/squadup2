@@ -21,6 +21,7 @@ import {
   Zap,
   Info
 } from 'lucide-react';
+import { renderAvatar } from '../utils/avatars';
 
 interface TeammateDiscoveryProps {
   currentUser: User;
@@ -554,11 +555,9 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
               {/* User Identity & Info */}
               <div className="space-y-4">
                 <div className="flex items-center gap-3.5">
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    className="w-14 h-14 rounded-[20px] object-cover ring-2 ring-purple-500/30 shrink-0"
-                  />
+                  <div className="w-14 h-14 rounded-[20px] overflow-hidden ring-2 ring-purple-500/30 shrink-0 bg-slate-950 flex items-center justify-center p-0.5">
+                    {renderAvatar(user.avatar, "w-full h-full")}
+                  </div>
                   <div>
                     <h3 
                       onClick={() => onSelectUser(user)}
@@ -677,7 +676,9 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
             
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
-                <img src={inviteUser.avatar} alt={inviteUser.name} className="w-10 h-10 rounded-xl object-cover" />
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center p-0.5 shrink-0">
+                  {renderAvatar(inviteUser.avatar, "w-full h-full")}
+                </div>
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-white text-base">
                     Invite {inviteUser.name}
