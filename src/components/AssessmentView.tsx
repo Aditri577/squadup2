@@ -1020,7 +1020,7 @@ export const AssessmentView: React.FC<AssessmentViewProps> = ({ currentUser, onU
                 </button>
               ) : (
                 <button
-                  onClick={finishAssessment}
+                  onClick={() => finishAssessment()}
                   className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-md shadow-emerald-500/20"
                 >
                   <FileCheck size={16} />

@@ -53,7 +53,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
   const filteredHackathons = query.trim()
     ? hackathons.filter(h =>
         h.title.toLowerCase().includes(query.toLowerCase()) ||
-        h.category?.toLowerCase().includes(query.toLowerCase())
+        (h as any).category?.toLowerCase().includes(query.toLowerCase())
       ).slice(0, 3)
     : hackathons.slice(0, 2);
 
@@ -172,7 +172,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs font-bold text-emerald-400">{user.matchScore || 90}% Match</div>
+                      <div className="text-xs font-bold text-emerald-400">{(user as any).matchScore || 90}% Match</div>
                       <div className="text-[10px] text-slate-500">View Profile</div>
                     </div>
                   </button>
@@ -203,7 +203,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-bold text-white">{h.title}</div>
-                        <div className="text-[10px] text-slate-400">{h.organizer} • Prize: {h.prizePool}</div>
+                        <div className="text-[10px] text-slate-400">{h.organizer} • Prize: {(h as any).prizePool || h.prizes}</div>
                       </div>
                     </div>
                     <span className="text-xs text-purple-300 font-medium group-hover:translate-x-1 transition">

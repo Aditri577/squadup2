@@ -249,8 +249,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ teamMembers, hackathon
                       key={task.id}
                       draggable={true}
                       onDragStart={(e) => {
-                        e.dataTransfer.setData('text/plain', task.id);
-                        e.dataTransfer.effectAllowed = 'move';
+                        (e as any).dataTransfer?.setData('text/plain', task.id);
+                        if ((e as any).dataTransfer) (e as any).dataTransfer.effectAllowed = 'move';
                         setDraggedTaskId(task.id);
                       }}
                       onDragEnd={() => {

@@ -509,7 +509,7 @@ function TeamRoute({ teams, currentUser, allUsers, onCreateTeam, onSendFeedback 
       activeTeam={team}
       onCreateTeam={onCreateTeam}
       onNavigateToDiscoveryWithRole={(_role: UserRole) => navigate('/discover')}
-      onSendFeedback={onSendFeedback}
+      onSendFeedback={async (fb) => { onSendFeedback(fb); }}
     />
   );
 }
