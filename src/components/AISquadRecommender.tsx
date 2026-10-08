@@ -29,18 +29,18 @@ export const AISquadRecommender: React.FC<AISquadRecommenderProps> = ({
   let recommendedRole = 'Backend Lead';
   if (!rolesPresent.includes('UI/UX Designer')) {
     recommendedRole = 'UI/UX Designer';
-  } else if (!rolesPresent.includes('Backend Lead')) {
+  } else if (!rolesPresent.includes('Backend Lead' as any)) {
     recommendedRole = 'Backend Lead';
   } else if (!rolesPresent.includes('AI/ML Engineer')) {
     recommendedRole = 'AI/ML Engineer';
-  } else if (!rolesPresent.includes('Frontend Lead')) {
+  } else if (!rolesPresent.includes('Frontend Lead' as any)) {
     recommendedRole = 'Frontend Lead';
   }
 
   // Filter candidates matching recommended role & high match score
   const candidates = allUsers
     .filter(u => u.id !== currentUser.id && !teamMembers.some(m => m.id === u.id))
-    .filter(u => u.role === recommendedRole || u.matchScore && u.matchScore > 85)
+    .filter(u => u.role === recommendedRole || (u as any).matchScore && (u as any).matchScore > 85)
     .slice(0, 3);
 
   const handleRefresh = () => {
@@ -107,7 +107,7 @@ export const AISquadRecommender: React.FC<AISquadRecommenderProps> = ({
                     </div>
                   </div>
                   <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                    {cand.matchScore || 92}% Match
+                    {(cand as any).matchScore || 92}% Match
                   </span>
                 </div>
 

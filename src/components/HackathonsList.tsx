@@ -132,6 +132,23 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
     toast.success('🚀 Project submitted successfully to Hackathon Demo Showcase!');
   };
 
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncDevfolio = async () => {
+    setSyncing(true);
+    try {
+      const resp = await fetch('/api/hackathons?refresh=true');
+      if (!resp.ok) throw new Error('Sync failed');
+      toast.success('✅ Live hackathons synced from Devfolio!');
+      // Reload to re-fetch updated list from parent
+      setTimeout(() => window.location.reload(), 800);
+    } catch {
+      toast.error('❌ Could not sync — please try again.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
       
@@ -146,15 +163,32 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
           <p className="text-xs sm:text-sm text-purple-200/80 mt-1">
             Browse upcoming competitions, form squads with verified technical badges, and submit projects.
           </p>
+          <div className="mt-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+              <Radio size={10} className="animate-pulse" />
+              Live Devfolio Feed Connected
+            </span>
+          </div>
         </div>
 
-        <button
-          onClick={() => setShowSubmitModal(true)}
-          className="px-6 py-3 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold uppercase tracking-wider transition shadow-lg hover:shadow-purple-500/30 flex items-center gap-2 cursor-pointer self-start sm:self-auto"
-        >
-          <Plus size={16} />
-          <span>Submit Project To Demo Day</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={handleSyncDevfolio}
+            disabled={syncing}
+            className="px-4 py-3 rounded-full bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold uppercase tracking-wider transition flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+            <span>{syncing ? 'Syncing…' : 'Sync Live'}</span>
+          </button>
+
+          <button
+            onClick={() => setShowSubmitModal(true)}
+            className="px-6 py-3 rounded-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold uppercase tracking-wider transition shadow-lg hover:shadow-purple-500/30 flex items-center gap-2 cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>Submit Project To Demo Day</span>
+          </button>
+        </div>
       </div>
 
       {/* Hackathons Cards Grid */}
@@ -174,7 +208,7 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#141022] via-[#141022]/60 to-transparent"></div>
                 
-                <div className="absolute top-4 left-4 flex gap-2">
+                <div className="absolute top-4 left-4 flex gap-2 flex-wrap">
                   <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-md text-purple-300 border border-purple-500/30 text-[10px] font-bold uppercase tracking-wider">
                     {h.domain}
                   </span>
@@ -182,6 +216,12 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
                     <Clock size={10} />
                     Live Registration
                   </span>
+                  {(h as any).source === 'devfolio' && (
+                    <span className="px-3 py-1 rounded-full bg-blue-500/20 backdrop-blur-md text-blue-300 border border-blue-500/40 text-[10px] font-bold flex items-center gap-1">
+                      <Radio size={10} />
+                      Devfolio
+                    </span>
+                  )}
                 </div>
 
                 <div className="absolute bottom-3 left-4 right-4 text-white">
@@ -230,22 +270,35 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
             </div>
 
             {/* Footer Actions */}
-            <div className="p-6 pt-0 flex flex-col sm:flex-row gap-2.5">
-              <button
-                onClick={() => setRegisteringHackathon(h)}
-                className="flex-1 py-3 px-4 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-purple-500/25 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <UserPlus size={14} />
-                <span>Register</span>
-              </button>
+            <div className="p-6 pt-0 flex flex-col gap-2.5">
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => setRegisteringHackathon(h)}
+                  className="flex-1 py-3 px-4 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-purple-500/25 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <UserPlus size={14} />
+                  <span>Register</span>
+                </button>
 
-              <button
-                onClick={() => onSelectHackathonFilter(h.title)}
-                className="flex-1 py-3 px-4 rounded-full bg-[#0b0813] border border-white/15 hover:border-purple-400/50 text-white text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span>Find Squad</span>
-                <ArrowRight size={13} />
-              </button>
+                <button
+                  onClick={() => onSelectHackathonFilter(h.title)}
+                  className="flex-1 py-3 px-4 rounded-full bg-[#0b0813] border border-white/15 hover:border-purple-400/50 text-white text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span>Find Squad</span>
+                  <ArrowRight size={13} />
+                </button>
+              </div>
+              {(h as any).websiteUrl && (
+                <a
+                  href={(h as any).websiteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full py-2 px-4 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-bold uppercase tracking-wider transition hover:bg-blue-500/20 flex items-center justify-center gap-1.5"
+                >
+                  <ExternalLink size={12} />
+                  <span>Official Page</span>
+                </a>
+              )}
             </div>
           </div>
         ))}

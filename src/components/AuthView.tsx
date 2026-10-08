@@ -1,11 +1,17 @@
 import React, { useState } from "react";
+
 import {
   GoogleAuthProvider,
   signInWithPopup,
-  signOut,
 } from "firebase/auth";
 
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 import {
   Mail,
@@ -91,26 +97,16 @@ const AuthView: React.FC<AuthViewProps> = ({
   onAuthSuccess,
 }) => {
   const [mode, setMode] = useState<"login" | "signup">("login");
-
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [role, setRole] = useState<UserRole>("Frontend Developer");
-
   const [college, setCollege] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [error, setError] = useState("");
-
   const [successMessage, setSuccessMessage] = useState("");
 
-  /**
-   * Common success handler
-   */
   const completeAuth = (token: string, user: User) => {
     setSuccessMessage(`Welcome ${user.name}!`);
 
@@ -119,9 +115,6 @@ const AuthView: React.FC<AuthViewProps> = ({
     }, 700);
   };
 
-  /**
-   * EMAIL/PASSWORD LOGIN
-   */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -157,9 +150,6 @@ const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
-  /**
-   * SIGNUP
-   */
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -209,9 +199,6 @@ const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
-  /**
-   * REAL FIREBASE GOOGLE SIGN-IN
-   */
   const handleGoogleSignIn = async () => {
     if (isSubmitting) return;
 
@@ -221,37 +208,37 @@ const AuthView: React.FC<AuthViewProps> = ({
     try {
       setIsSubmitting(true);
 
-      /**
-       * Firebase Google provider
-       */
       const provider = new GoogleAuthProvider();
 
-      /**
-       * This forces Google account selection.
-       */
       provider.setCustomParameters({
         prompt: "select_account",
       });
 
-      /**
-       * Opens REAL Google login popup
-       */
       const result = await signInWithPopup(auth, provider);
-
       const firebaseUser = result.user;
 
-      /**
-       * Firebase ID token
-       *
-       * IMPORTANT:
-       * This token should be verified by your backend.
+      /*
+       * Save real Google user to Firestore.
+       */
+      await setDoc(
+        doc(db, "users", firebaseUser.uid),
+        {
+          uid: firebaseUser.uid,
+          name: firebaseUser.displayName || "",
+          email: firebaseUser.email || "",
+          avatar: firebaseUser.photoURL || "",
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      /*
+       * Get Firebase ID token.
        */
       const idToken = await firebaseUser.getIdToken();
 
-      /**
-       * Send Firebase token to our backend.
-       *
-       * Backend should verify this token using Firebase Admin SDK.
+      /*
+       * Send Firebase user information to backend.
        */
       const response = await api<AuthResponse>("/api/auth/google", {
         method: "POST",
@@ -264,33 +251,35 @@ const AuthView: React.FC<AuthViewProps> = ({
       });
 
       completeAuth(response.token, response.user);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Google Sign-In Error:", err);
 
-      if (err?.code === "auth/popup-closed-by-user") {
+      const firebaseError = err as { code?: string };
+
+      if (firebaseError.code === "auth/popup-closed-by-user") {
         setError("Google sign-in was cancelled.");
         return;
       }
 
-      if (err?.code === "auth/popup-blocked") {
+      if (firebaseError.code === "auth/popup-blocked") {
         setError(
           "Google popup was blocked. Please allow popups for this website."
         );
         return;
       }
 
-      if (err?.code === "auth/cancelled-popup-request") {
+      if (firebaseError.code === "auth/cancelled-popup-request") {
         return;
       }
 
-      if (err?.code === "auth/unauthorized-domain") {
+      if (firebaseError.code === "auth/unauthorized-domain") {
         setError(
           "This domain is not authorized in Firebase. Add it in Firebase Authentication → Settings → Authorized domains."
         );
         return;
       }
 
-      if (err?.code === "auth/network-request-failed") {
+      if (firebaseError.code === "auth/network-request-failed") {
         setError("Network error. Please check your internet connection.");
         return;
       }
@@ -301,11 +290,6 @@ const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
-  /**
-   * Demo mode fallback
-   *
-   * Only used if demoMode is enabled.
-   */
   const handleDemoLogin = () => {
     setError("");
 
@@ -321,7 +305,7 @@ const AuthView: React.FC<AuthViewProps> = ({
         bio: "Demo SquadUP user",
         skills: [],
         testResults: [],
-        joinedAt: new Date().toISOString().split('T')[0],
+        joinedAt: new Date().toISOString().split("T")[0],
         preferredDomains: ["AI/GenAI"],
         lookingForTeam: true,
         xpPoints: 0,
@@ -345,13 +329,11 @@ const AuthView: React.FC<AuthViewProps> = ({
 
   return (
     <div className="min-h-screen bg-[#050816] text-white flex items-center justify-center px-4 py-10 relative overflow-hidden">
-      {/* Background glow */}
       <div className="absolute top-[-200px] left-[-200px] w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px]" />
 
       <div className="absolute bottom-[-200px] right-[-200px] w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[120px]" />
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo / Heading */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 shadow-lg shadow-cyan-500/20 mb-5">
             <span className="text-2xl font-black">S</span>
@@ -368,9 +350,7 @@ const AuthView: React.FC<AuthViewProps> = ({
           </p>
         </div>
 
-        {/* Card */}
         <div className="bg-white/[0.04] border border-white/10 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-2xl">
-          {/* Tabs */}
           <div className="grid grid-cols-2 bg-black/20 rounded-xl p-1 mb-7">
             <button
               type="button"
@@ -405,7 +385,6 @@ const AuthView: React.FC<AuthViewProps> = ({
             </button>
           </div>
 
-          {/* Error */}
           {error && (
             <div className="mb-5 flex items-start gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -413,7 +392,6 @@ const AuthView: React.FC<AuthViewProps> = ({
             </div>
           )}
 
-          {/* Success */}
           {successMessage && (
             <div className="mb-5 flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
               <CheckCircle2 className="w-5 h-5 shrink-0" />
@@ -421,7 +399,6 @@ const AuthView: React.FC<AuthViewProps> = ({
             </div>
           )}
 
-          {/* Google */}
           <button
             type="button"
             disabled={isSubmitting}
@@ -437,7 +414,6 @@ const AuthView: React.FC<AuthViewProps> = ({
             <span>Continue with Google</span>
           </button>
 
-          {/* Divider */}
           <div className="flex items-center gap-4 my-6">
             <div className="h-px bg-white/10 flex-1" />
 
@@ -448,12 +424,10 @@ const AuthView: React.FC<AuthViewProps> = ({
             <div className="h-px bg-white/10 flex-1" />
           </div>
 
-          {/* Form */}
           <form
             onSubmit={mode === "login" ? handleLogin : handleSignup}
             className="space-y-4"
           >
-            {/* Name */}
             {mode === "signup" && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -474,7 +448,6 @@ const AuthView: React.FC<AuthViewProps> = ({
               </div>
             )}
 
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Email
@@ -494,7 +467,6 @@ const AuthView: React.FC<AuthViewProps> = ({
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Password
@@ -534,10 +506,8 @@ const AuthView: React.FC<AuthViewProps> = ({
               )}
             </div>
 
-            {/* Signup fields */}
             {mode === "signup" && (
               <>
-                {/* Role */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Primary Role
@@ -566,7 +536,6 @@ const AuthView: React.FC<AuthViewProps> = ({
                   </div>
                 </div>
 
-                {/* College */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     College / University
@@ -587,7 +556,6 @@ const AuthView: React.FC<AuthViewProps> = ({
               </>
             )}
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={isSubmitting}
@@ -601,14 +569,12 @@ const AuthView: React.FC<AuthViewProps> = ({
               ) : (
                 <>
                   {mode === "login" ? "Login" : "Create Account"}
-
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
             </button>
           </form>
 
-          {/* Switch */}
           <p className="text-center text-sm text-gray-500 mt-6">
             {mode === "login"
               ? "Don't have an account?"
@@ -622,7 +588,6 @@ const AuthView: React.FC<AuthViewProps> = ({
             </button>
           </p>
 
-          {/* Demo */}
           {demoMode && (
             <button
               type="button"
@@ -634,7 +599,6 @@ const AuthView: React.FC<AuthViewProps> = ({
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-center gap-2 mt-6 text-xs text-gray-600">
           <MapPin className="w-3.5 h-3.5" />
           <span>Built for students & developers</span>
