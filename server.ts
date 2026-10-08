@@ -491,7 +491,9 @@ async function fetchDevfolioLiveHackathons(forceRefresh = false): Promise<any[]>
           ? `${h.city}, ${h.country || "India"}`
           : (h.location || "In-Person");
 
-      const webUrl = h.hackathon_setting?.site || (h.slug ? `https://${h.slug}.devfolio.co` : undefined);
+      const webUrl = h.hackathon_setting?.site
+        ? (h.hackathon_setting.site.startsWith('http') ? h.hackathon_setting.site : `https://${h.hackathon_setting.site}.devfolio.co`)
+        : (h.slug ? `https://${h.slug}.devfolio.co` : undefined);
 
       return {
         id: `devfolio-${h.slug || h.uuid}`,

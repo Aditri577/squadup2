@@ -334,7 +334,9 @@ async function fetchDevfolioLiveHackathons(forceRefresh = false): Promise<any[]>
         domain: tags[0] ?? 'Open Innovation',
         tags,
         banner,
-        websiteUrl: h.hackathon_setting?.site ? `https://${h.hackathon_setting.site}.devfolio.co` : `https://devfolio.co/hackathons/${h.slug}`,
+        websiteUrl: h.hackathon_setting?.site
+          ? (h.hackathon_setting.site.startsWith('http') ? h.hackathon_setting.site : `https://${h.hackathon_setting.site}.devfolio.co`)
+          : (h.slug ? `https://${h.slug}.devfolio.co` : undefined),
         source: 'devfolio' as const
       };
     });
