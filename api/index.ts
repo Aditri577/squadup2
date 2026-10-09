@@ -3,6 +3,8 @@ import cors from "cors";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { GoogleGenAI } from "@google/genai";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore, collection, doc, getDocs, setDoc, type Firestore } from "firebase/firestore";
 
 const INITIAL_USERS: any[] = [
   {
@@ -134,7 +136,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const DEMO_MODE = process.env.DEMO_MODE === "true";
+const DEMO_MODE = process.env.DEMO_MODE === "true" && process.env.NODE_ENV !== "production";
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "squadup123";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const BCRYPT_ROUNDS = 10;
@@ -289,6 +291,139 @@ let dbRequests: any[] = [...INITIAL_REQUESTS];
 let dbFeedback: any[] = [...defaultFeedback];
 let dbHackathons: any[] = [...INITIAL_HACKATHONS];
 
+// ─── Firebase Firestore Cloud Database Setup ──────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyC9YRC5vMMWgmVBgwZ7oM9rYq-E4pxVuiY",
+  authDomain: "squadup2-493e0.firebaseapp.com",
+  projectId: "squadup2-493e0",
+  storageBucket: "squadup2-493e0.firebasestorage.app",
+  messagingSenderId: "496247423194",
+  appId: "1:496247423194:web:b2851a4f78034e33dfe5e3",
+  measurementId: "G-E5T1KL1BV8"
+};
+
+let firestore: Firestore | null = null;
+try {
+  const fbApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  firestore = getFirestore(fbApp);
+  console.log("[Firestore] Cloud database initialized successfully.");
+} catch (e: any) {
+  console.warn("[Firestore] Initialization notice:", e?.message);
+}
+
+// Background write-through persistence helpers
+async function persistUser(user: any) {
+  if (!firestore || !user?.id) return;
+  try {
+    await setDoc(doc(firestore, "users", String(user.id)), user, { merge: true });
+  } catch {
+    // Non-blocking fallback to in-memory store
+  }
+}
+
+async function persistTeam(team: any) {
+  if (!firestore || !team?.id) return;
+  try {
+    await setDoc(doc(firestore, "teams", String(team.id)), team, { merge: true });
+  } catch {
+    // Non-blocking fallback to in-memory store
+  }
+}
+
+async function persistRequest(req: any) {
+  if (!firestore || !req?.id) return;
+  try {
+    await setDoc(doc(firestore, "requests", String(req.id)), req, { merge: true });
+  } catch {
+    // Non-blocking fallback to in-memory store
+  }
+}
+
+async function persistFeedback(fb: any) {
+  if (!firestore || !fb?.id) return;
+  try {
+    await setDoc(doc(firestore, "feedback", String(fb.id)), fb, { merge: true });
+  } catch {
+    // Non-blocking fallback to in-memory store
+  }
+}
+
+// Hydrate state from Firestore on serverless cold starts
+let isHydrated = false;
+async function ensureHydrated() {
+  if (isHydrated || !firestore) return;
+  try {
+    const [uSnap, tSnap, rSnap, fSnap] = await Promise.all([
+      getDocs(collection(firestore, "users")).catch(() => null),
+      getDocs(collection(firestore, "teams")).catch(() => null),
+      getDocs(collection(firestore, "requests")).catch(() => null),
+      getDocs(collection(firestore, "feedback")).catch(() => null),
+    ]);
+
+    if (uSnap && !uSnap.empty) {
+      const remoteUsers: any[] = [];
+      uSnap.forEach((d) => remoteUsers.push(d.data()));
+      const remoteIds = new Set(remoteUsers.map((u: any) => u.id));
+      dbUsers = [
+        ...remoteUsers,
+        ...defaultUsers.filter((u: any) => !remoteIds.has(u.id))
+      ];
+    }
+
+    if (tSnap && !tSnap.empty) {
+      const remoteTeams: any[] = [];
+      tSnap.forEach((d) => remoteTeams.push(d.data()));
+      const remoteIds = new Set(remoteTeams.map((t: any) => t.id));
+      dbTeams = [
+        ...remoteTeams,
+        ...INITIAL_TEAMS.filter((t: any) => !remoteIds.has(t.id))
+      ];
+    }
+
+    if (rSnap && !rSnap.empty) {
+      const remoteReqs: any[] = [];
+      rSnap.forEach((d) => remoteReqs.push(d.data()));
+      if (remoteReqs.length > 0) dbRequests = remoteReqs;
+    }
+
+    if (fSnap && !fSnap.empty) {
+      const remoteFb: any[] = [];
+      fSnap.forEach((d) => remoteFb.push(d.data()));
+      if (remoteFb.length > 0) dbFeedback = remoteFb;
+    }
+
+    isHydrated = true;
+  } catch {
+    // Continue with in-memory state if Firestore is unreachable
+  }
+}
+
+// ─── Production Rate Limiter ──────────────────────────────────────────────────
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+function createRateLimiter(maxRequests = 25, windowMs = 60000) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "global";
+    const key = Array.isArray(ip) ? ip[0] : String(ip);
+    const now = Date.now();
+    const entry = rateLimitMap.get(key);
+
+    if (!entry || now > entry.resetAt) {
+      rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    if (entry.count >= maxRequests) {
+      return res.status(429).json({ error: "Too many requests. Please wait a moment before trying again." });
+    }
+
+    entry.count += 1;
+    next();
+  };
+}
+
+const authLimiter = createRateLimiter(30, 60000); // 30 requests/min
+const aiLimiter = createRateLimiter(15, 60000);   // 15 requests/min
+
 // ─── Devfolio Live Hackathons ─────────────────────────────────────────────────
 interface DevfolioCache { hackathons: any[]; fetchedAt: number; }
 let devfolioCache: DevfolioCache | null = null;
@@ -359,8 +494,14 @@ async function getLiveHackathons(forceRefresh = false): Promise<any[]> {
 // ─── Router Setup ─────────────────────────────────────────────────────────────
 const router = express.Router();
 
+// Auto-hydrate state from Firestore across lambda invocations
+router.use(async (_req, _res, next) => {
+  await ensureHydrated();
+  next();
+});
+
 router.get("/health", (_req, res) => {
-  res.json({ status: "ok", app: "SquadUP", serverless: true });
+  res.json({ status: "ok", app: "SquadUP", serverless: true, firestore: !!firestore });
 });
 
 router.get("/config", (_req, res) => {
@@ -382,7 +523,7 @@ function validateRegistration(body: any): string | null {
   return null;
 }
 
-router.post("/auth/register", async (req, res) => {
+router.post("/auth/register", authLimiter, async (req, res) => {
   try {
     const validationError = validateRegistration(req.body);
     if (validationError) {
@@ -416,13 +557,15 @@ router.post("/auth/register", async (req, res) => {
     };
 
     dbUsers.push(newUser);
+    persistUser(newUser);
+
     res.json({ success: true, token: signToken(newUser.id), user: sanitizeUser(newUser) });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to create account", details: error.message });
   }
 });
 
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) {
@@ -460,7 +603,7 @@ router.get("/auth/me", requireAuth, (req: any, res) => {
   }
 });
 
-router.post("/auth/google", async (req, res) => {
+router.post("/auth/google", authLimiter, async (req, res) => {
   try {
     const { email, name, avatar } = req.body || {};
     if (!email || !EMAIL_PATTERN.test(String(email).trim())) {
@@ -496,6 +639,7 @@ router.post("/auth/google", async (req, res) => {
       dbUsers.push(user);
     }
 
+    persistUser(user);
     res.json({ success: true, token: signToken(user.id), user: sanitizeUser(user) });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to authenticate with Google", details: error.message });
@@ -572,6 +716,7 @@ router.put("/users/:id", requireAuth, (req: any, res) => {
     }
 
     dbUsers[idx] = { ...dbUsers[idx], ...updatedFields };
+    persistUser(dbUsers[idx]);
     res.json({ success: true, user: sanitizeUser(dbUsers[idx]) });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to update user", details: error.message });
@@ -610,6 +755,7 @@ router.post("/teams", requireAuth, (req: any, res) => {
     };
 
     dbTeams.push(newTeam);
+    persistTeam(newTeam);
 
     const leaderIdx = dbUsers.findIndex(u => u.id === leader.id);
     if (leaderIdx !== -1) {
@@ -620,6 +766,7 @@ router.post("/teams", requireAuth, (req: any, res) => {
         xpPoints: newXp,
         level: getXpLevel(newXp)
       };
+      persistUser(dbUsers[leaderIdx]);
     }
 
     res.json({ success: true, team: newTeam });
@@ -660,6 +807,8 @@ router.post("/requests", requireAuth, (req: any, res) => {
     };
 
     dbRequests.push(newRequest);
+    persistRequest(newRequest);
+
     res.json({ success: true, request: newRequest });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to send request", details: error.message });
@@ -687,6 +836,7 @@ router.put("/requests/:id", requireAuth, (req: any, res) => {
     }
 
     dbRequests[reqIdx] = { ...targetReq, status };
+    persistRequest(dbRequests[reqIdx]);
 
     if (status === "accepted") {
       const teamIdx = dbTeams.findIndex(t => t.id === targetReq.teamId);
@@ -706,6 +856,7 @@ router.put("/requests/:id", requireAuth, (req: any, res) => {
               }
             ]
           };
+          persistTeam(dbTeams[teamIdx]);
         }
       }
 
@@ -718,6 +869,7 @@ router.put("/requests/:id", requireAuth, (req: any, res) => {
           xpPoints: newXp,
           level: getXpLevel(newXp)
         };
+        persistUser(dbUsers[userIdx]);
       }
     }
 
@@ -764,16 +916,19 @@ router.post("/feedback", requireAuth, (req: any, res) => {
     };
 
     dbFeedback.push(newFeedback);
+    persistFeedback(newFeedback);
 
     const senderIdx = dbUsers.findIndex(u => u.id === sender.id);
     if (senderIdx !== -1) {
       const newXp = (dbUsers[senderIdx].xpPoints || 100) + 50;
       dbUsers[senderIdx] = { ...dbUsers[senderIdx], xpPoints: newXp, level: getXpLevel(newXp) };
+      persistUser(dbUsers[senderIdx]);
     }
     const receiverIdx = dbUsers.findIndex(u => u.id === receiverId);
     if (receiverIdx !== -1) {
       const newXp = (dbUsers[receiverIdx].xpPoints || 100) + 100;
       dbUsers[receiverIdx] = { ...dbUsers[receiverIdx], xpPoints: newXp, level: getXpLevel(newXp) };
+      persistUser(dbUsers[receiverIdx]);
     }
 
     res.json({ success: true, feedback: newFeedback });
@@ -782,7 +937,7 @@ router.post("/feedback", requireAuth, (req: any, res) => {
   }
 });
 
-router.post("/ai/project-ideas", requireAuth, async (req, res) => {
+router.post("/ai/project-ideas", requireAuth, aiLimiter, async (req, res) => {
   try {
     const { hackathonTitle, hackathonDomain, teamMembers } = req.body;
     const ai = getAiClient();
@@ -847,7 +1002,7 @@ Return JSON strictly matching this array format:
   }
 });
 
-router.post("/ai/match-analysis", requireAuth, async (req, res) => {
+router.post("/ai/match-analysis", requireAuth, aiLimiter, async (req, res) => {
   try {
     const { candidate, teamSkillGaps, hackathonTitle } = req.body;
     const ai = getAiClient();
@@ -903,10 +1058,12 @@ router.post("/teams/join-by-code", requireAuth, async (req: any, res) => {
 
     // Check and update team memberships
     const oldTeamId = user.teamId;
+    let oldTeam: any = null;
     if (oldTeamId && oldTeamId !== team.id) {
-      const oldTeam = dbTeams.find((t: any) => t.id === oldTeamId);
+      oldTeam = dbTeams.find((t: any) => t.id === oldTeamId);
       if (oldTeam) {
         oldTeam.members = oldTeam.members.filter((m: any) => m.userId !== user.id);
+        persistTeam(oldTeam);
       }
     }
 
@@ -928,6 +1085,9 @@ router.post("/teams/join-by-code", requireAuth, async (req: any, res) => {
       xpPoints: newXp,
       level: getXpLevel(newXp)
     };
+
+    persistTeam(team);
+    persistUser(dbUsers[userIdx]);
 
     res.json({ success: true, team, user: dbUsers[userIdx] });
   } catch (error: any) {
@@ -988,7 +1148,7 @@ router.post("/mail/invite-friend", requireAuth, async (req: any, res) => {
 });
 
 // AI Squad Compatibility & Badge Match Engine (Gemini 1.5 Flash)
-router.post("/ai/squad-compatibility", requireAuth, async (req: any, res) => {
+router.post("/ai/squad-compatibility", requireAuth, aiLimiter, async (req: any, res) => {
   try {
     const { candidateUserId, teamId } = req.body;
     const candidate = dbUsers.find(u => u.id === candidateUserId) || dbUsers.find(u => u.id === req.user!.id);

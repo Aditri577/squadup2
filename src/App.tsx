@@ -231,6 +231,11 @@ function AppShell() {
   };
 
   const handleJoinTeamByCode = async (teamId: string, inviteCode?: string) => {
+    if (!isVerified) {
+      toast.info("Please pass a skill assessment first to join squads via invite code! 🛡️");
+      navigate('/assessment');
+      return;
+    }
     const code = inviteCode || teamId;
     const result = await runAuthenticated(() =>
       api<{ success: boolean; team: Team; user: User }>('/api/teams/join-by-code', {
@@ -336,20 +341,25 @@ function AppShell() {
           <Route
             path="/discover"
             element={
-              isVerified ? (
-                <TeammateDiscovery
-                  currentUser={currentUser}
-                  allUsers={users}
-                  onSelectUser={(u) => navigate(`/u/${u.id}`)}
-                  onSendTeamRequest={handleSendTeamRequest}
-                  activeTeamName={currentTeam?.name || 'Team Nexus'}
-                  activeHackathonName={currentTeam?.hackathonName || 'AI Innovations Global Hackathon 2026'}
-                  onNavigateToAssessment={() => navigate('/assessment')}
-                  initialHackathonFilter={hackathonFilter}
-                  initialRoleFilter={roleFilter}
-                  onClearFilters={() => { setHackathonFilter(''); setRoleFilter(''); }}
-                />
-              ) : verificationGate
+              <TeammateDiscovery
+                currentUser={currentUser}
+                allUsers={users}
+                onSelectUser={(u) => navigate(`/u/${u.id}`)}
+                onSendTeamRequest={(req) => {
+                  if (!isVerified) {
+                    toast.info("Please complete a skill assessment first to unlock sending squad invitations! 🛡️");
+                    navigate('/assessment');
+                    return;
+                  }
+                  handleSendTeamRequest(req);
+                }}
+                activeTeamName={currentTeam?.name || 'Team Nexus'}
+                activeHackathonName={currentTeam?.hackathonName || 'AI Innovations Global Hackathon 2026'}
+                onNavigateToAssessment={() => navigate('/assessment')}
+                initialHackathonFilter={hackathonFilter}
+                initialRoleFilter={roleFilter}
+                onClearFilters={() => { setHackathonFilter(''); setRoleFilter(''); }}
+              />
             }
           />
 
@@ -401,35 +411,45 @@ function AppShell() {
           <Route
             path="/teams"
             element={
-              isVerified ? (
-                <TeamWorkspace
-                  currentUser={currentUser}
-                  allUsers={users}
-                  activeTeam={currentTeam}
-                  onCreateTeam={handleCreateTeam}
-                  onOpenJoinModal={() => setShowSquadJoinModal(true)}
-                  onNavigateToDiscoveryWithRole={(role: UserRole) => {
-                    setRoleFilter(role);
-                    navigate('/discover');
-                  }}
-                  onSendFeedback={handleSendFeedback}
-                />
-              ) : verificationGate
+              <TeamWorkspace
+                currentUser={currentUser}
+                allUsers={users}
+                activeTeam={currentTeam}
+                onCreateTeam={(newTeam) => {
+                  if (!isVerified) {
+                    toast.info("Please complete a skill assessment to verify your squad leadership profile! 🚀");
+                    navigate('/assessment');
+                    return;
+                  }
+                  handleCreateTeam(newTeam);
+                }}
+                onOpenJoinModal={() => setShowSquadJoinModal(true)}
+                onNavigateToDiscoveryWithRole={(role: UserRole) => {
+                  setRoleFilter(role);
+                  navigate('/discover');
+                }}
+                onSendFeedback={handleSendFeedback}
+              />
             }
           />
 
           <Route
             path="/t/:teamId"
             element={
-              isVerified ? (
-                <TeamRoute
-                  teams={teams}
-                  currentUser={currentUser}
-                  allUsers={users}
-                  onCreateTeam={handleCreateTeam}
-                  onSendFeedback={handleSendFeedback}
-                />
-              ) : verificationGate
+              <TeamRoute
+                teams={teams}
+                currentUser={currentUser}
+                allUsers={users}
+                onCreateTeam={(newTeam) => {
+                  if (!isVerified) {
+                    toast.info("Please complete a skill assessment to verify your squad leadership profile! 🚀");
+                    navigate('/assessment');
+                    return;
+                  }
+                  handleCreateTeam(newTeam);
+                }}
+                onSendFeedback={handleSendFeedback}
+              />
             }
           />
 
