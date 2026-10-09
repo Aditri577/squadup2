@@ -15,9 +15,13 @@ import {
   Lightbulb, 
   Zap, 
   ChevronRight,
-  Star
+  Star,
+  KeyRound,
+  Copy,
+  Check
 } from 'lucide-react';
 import { renderAvatar } from '../utils/avatars';
+import { useToast } from './Toast';
 
 interface TeamWorkspaceProps {
   currentUser: User;
@@ -26,6 +30,7 @@ interface TeamWorkspaceProps {
   onCreateTeam: (newTeam: Omit<Team, 'id' | 'createdAt'>) => void;
   onNavigateToDiscoveryWithRole: (role: UserRole) => void;
   onSendFeedback: (feedback: { senderId: string; senderName: string; receiverId: string; teamId: string; rating: number; comment: string; tags: string[] }) => Promise<void>;
+  onOpenJoinModal?: () => void;
 }
 
 export const TeamWorkspace: React.FC<TeamWorkspaceProps> = ({
@@ -34,13 +39,16 @@ export const TeamWorkspace: React.FC<TeamWorkspaceProps> = ({
   activeTeam,
   onCreateTeam,
   onNavigateToDiscoveryWithRole,
-  onSendFeedback
+  onSendFeedback,
+  onOpenJoinModal
 }) => {
   const [workspaceTab, setWorkspaceTab] = useState<'overview' | 'kanban' | 'pitch' | 'chat' | 'feedback'>('overview');
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [hackathonName, setHackathonName] = useState('AI Innovations Global Hackathon 2026');
   const [description, setDescription] = useState('');
+  const toast = useToast();
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // Teammate Feedback Endorsement States
   const [selectedReviewee, setSelectedReviewee] = useState<User | null>(null);
@@ -135,12 +143,14 @@ export const TeamWorkspace: React.FC<TeamWorkspaceProps> = ({
     e.preventDefault();
     if (!teamName) return;
 
+    const generatedCode = 'SQ-' + Math.random().toString(36).substring(2, 6).toUpperCase();
     onCreateTeam({
       name: teamName,
       hackathonId: 'hack-1',
       hackathonName,
       description,
       leaderId: currentUser.id,
+      inviteCode: generatedCode,
       members: [
         {
           userId: currentUser.id,
@@ -171,13 +181,24 @@ export const TeamWorkspace: React.FC<TeamWorkspaceProps> = ({
         </div>
 
         {!activeTeam && (
-          <button
-            onClick={() => setShowCreateTeam(true)}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg glow-cyan cursor-pointer shrink-0"
-          >
-            <Plus size={16} />
-            <span>Create New Team</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenJoinModal && (
+              <button
+                onClick={onOpenJoinModal}
+                className="px-4 py-2.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <KeyRound size={15} className="text-amber-400" />
+                <span>Join with Code</span>
+              </button>
+            )}
+            <button
+              onClick={() => setShowCreateTeam(true)}
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg glow-cyan cursor-pointer"
+            >
+              <Plus size={16} />
+              <span>Create New Team</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -200,9 +221,34 @@ export const TeamWorkspace: React.FC<TeamWorkspaceProps> = ({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 bg-[#0b0813] px-5 py-2.5 rounded-full border border-white/10 text-xs font-bold text-white">
-                <Users size={16} className="text-purple-400" />
-                <span>{activeTeam.members.length} Members Active</span>
+              <div className="flex flex-wrap items-center gap-3">
+                {activeTeam.inviteCode && (
+                  <div className="flex items-center gap-2 bg-[#120a24] px-3.5 py-1.5 rounded-full border border-purple-500/40 shadow-inner">
+                    <span className="text-[10px] uppercase font-bold text-purple-300">Invite Code:</span>
+                    <span className="font-mono font-bold text-amber-300 text-xs tracking-wider">
+                      {activeTeam.inviteCode}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(activeTeam.inviteCode!);
+                        setCopiedCode(true);
+                        toast.success(`Invite code "${activeTeam.inviteCode}" copied to clipboard!`);
+                        setTimeout(() => setCopiedCode(false), 2000);
+                      }}
+                      className="p-1 rounded hover:bg-purple-800/40 text-slate-300 hover:text-white transition cursor-pointer flex items-center gap-1 text-[11px]"
+                      title="Copy Invite Code to share with friends"
+                    >
+                      {copiedCode ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      <span className="text-[10px] text-purple-300 font-semibold">{copiedCode ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 bg-[#0b0813] px-5 py-2.5 rounded-full border border-white/10 text-xs font-bold text-white">
+                  <Users size={16} className="text-purple-400" />
+                  <span>{activeTeam.members.length} Members Active</span>
+                </div>
               </div>
             </div>
 
@@ -515,13 +561,24 @@ export const TeamWorkspace: React.FC<TeamWorkspaceProps> = ({
             Create a team to manage member skill matrices, invite candidates with verified badges, and generate AI hackathon project ideas.
           </p>
 
-          <button
-            onClick={() => setShowCreateTeam(true)}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-bold text-xs shadow-lg glow-cyan inline-flex items-center gap-2 cursor-pointer"
-          >
-            <Plus size={16} />
-            <span>Create New Team</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            {onOpenJoinModal && (
+              <button
+                onClick={onOpenJoinModal}
+                className="px-6 py-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 hover:text-white font-bold text-xs inline-flex items-center gap-2 cursor-pointer transition shadow-md"
+              >
+                <KeyRound size={15} className="text-amber-400" />
+                <span>Join Squad with Code</span>
+              </button>
+            )}
+            <button
+              onClick={() => setShowCreateTeam(true)}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white font-bold text-xs shadow-lg glow-cyan inline-flex items-center gap-2 cursor-pointer"
+            >
+              <Plus size={16} />
+              <span>Create New Team</span>
+            </button>
+          </div>
         </div>
       )}
 

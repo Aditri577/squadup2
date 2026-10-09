@@ -768,7 +768,7 @@ apiRouter.post("/hackathons", requireAuth, async (req, res) => {
   }
 });
 
-const IMMUTABLE_USER_FIELDS = ["id", "email", "passwordHash", "level", "teamId", "xpPoints"];
+const IMMUTABLE_USER_FIELDS = ["id", "email", "passwordHash", "level", "xpPoints"];
 
 apiRouter.put("/users/:id", requireAuth, async (req, res) => {
   try {
@@ -1157,7 +1157,15 @@ apiRouter.post("/teams/join-by-code", requireAuth, async (req, res) => {
       });
     }
 
-    // Check already member
+    // Check and update team memberships
+    const oldTeamId = user.teamId;
+    if (oldTeamId && oldTeamId !== team.id) {
+      const oldTeam = teams.find(t => t.id === oldTeamId);
+      if (oldTeam) {
+        oldTeam.members = oldTeam.members.filter(m => m.userId !== user.id);
+      }
+    }
+
     const alreadyMember = team.members.some(m => m.userId === user.id);
     if (!alreadyMember) {
       team.members.push({
@@ -1166,23 +1174,23 @@ apiRouter.post("/teams/join-by-code", requireAuth, async (req, res) => {
         joinedAt: new Date().toISOString().split("T")[0],
         isLeader: false
       });
-      await saveTeams(teams);
-
-      users = users.map(u => {
-        if (u.id === user.id) {
-          const newXp = (u.xpPoints || 100) + 50;
-          return {
-            ...u,
-            teamId: team.id,
-            lookingForTeam: false,
-            xpPoints: newXp,
-            level: getXpLevel(newXp)
-          };
-        }
-        return u;
-      });
-      await saveUsers(users);
     }
+    await saveTeams(teams);
+
+    users = users.map(u => {
+      if (u.id === user.id) {
+        const newXp = (u.xpPoints || 100) + (alreadyMember ? 0 : 50);
+        return {
+          ...u,
+          teamId: team.id,
+          lookingForTeam: false,
+          xpPoints: newXp,
+          level: getXpLevel(newXp)
+        };
+      }
+      return u;
+    });
+    await saveUsers(users);
 
     res.json({ success: true, team, user: users.find(u => u.id === user.id) });
   } catch (error: any) {

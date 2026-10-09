@@ -56,6 +56,16 @@ function AppShell() {
 
   const [showRequestsModal, setShowRequestsModal] = useState(false);
   const [showSquadJoinModal, setShowSquadJoinModal] = useState(false);
+  const [initialJoinCode, setInitialJoinCode] = useState<string>('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const code = params.get('joinCode');
+    if (code && authState === 'authenticated') {
+      setInitialJoinCode(code.toUpperCase());
+      setShowSquadJoinModal(true);
+    }
+  }, [location.search, authState]);
 
   const loadState = useCallback(async () => {
     const data = await api<{ users: User[]; teams: Team[]; requests: TeamRequest[]; feedback: TeammateFeedback[]; hackathons?: Hackathon[] }>('/api/state');
@@ -207,7 +217,8 @@ function AppShell() {
           hackathonName: newTeamData.hackathonName,
           description: newTeamData.description,
           lookingForRoles: newTeamData.lookingForRoles,
-          projectIdea: newTeamData.projectIdea
+          projectIdea: newTeamData.projectIdea,
+          inviteCode: newTeamData.inviteCode
         }
       })
     );
@@ -216,6 +227,22 @@ function AppShell() {
     const me = await runAuthenticated(() => api<{ user: User }>('/api/auth/me'));
     if (me) setCurrentUser(me.user);
     toast.success(`Team "${result.team.name}" created! 🎉`);
+    navigate('/teams');
+  };
+
+  const handleJoinTeamByCode = async (teamId: string, inviteCode?: string) => {
+    const code = inviteCode || teamId;
+    const result = await runAuthenticated(() =>
+      api<{ success: boolean; team: Team; user: User }>('/api/teams/join-by-code', {
+        method: 'POST',
+        body: { code }
+      })
+    );
+    if (!result) return;
+    await runAuthenticated(loadState);
+    const me = await runAuthenticated(() => api<{ user: User }>('/api/auth/me'));
+    if (me) setCurrentUser(me.user);
+    toast.success(`🎉 You have joined "${result.team.name}"! Welcome to the squad.`);
     navigate('/teams');
   };
 
@@ -380,6 +407,7 @@ function AppShell() {
                   allUsers={users}
                   activeTeam={currentTeam}
                   onCreateTeam={handleCreateTeam}
+                  onOpenJoinModal={() => setShowSquadJoinModal(true)}
                   onNavigateToDiscoveryWithRole={(role: UserRole) => {
                     setRoleFilter(role);
                     navigate('/discover');
@@ -412,6 +440,7 @@ function AppShell() {
                 hackathons={hackathons}
                 currentUser={currentUser}
                 onCreateTeam={handleCreateTeam}
+                onOpenJoinCodeModal={() => setShowSquadJoinModal(true)}
                 onSelectHackathonFilter={(hackathonName) => {
                   setHackathonFilter(hackathonName);
                   navigate('/discover');
@@ -436,18 +465,15 @@ function AppShell() {
       {/* GLOBAL SQUAD JOIN WITH INVITE CODE MODAL */}
       <SquadJoinModal
         isOpen={showSquadJoinModal}
-        onClose={() => setShowSquadJoinModal(false)}
+        onClose={() => {
+          setShowSquadJoinModal(false);
+          setInitialJoinCode('');
+        }}
         currentUser={currentUser}
         allUsers={users}
         teams={teams}
-        onJoinTeam={(teamId) => {
-          handleUpdateUser({
-            ...currentUser,
-            teamId,
-            lookingForTeam: false
-          });
-          navigate('/teams');
-        }}
+        initialCode={initialJoinCode}
+        onJoinTeam={handleJoinTeamByCode}
         onNavigateToAssessment={() => navigate('/assessment')}
       />
 

@@ -378,6 +378,7 @@ export const INITIAL_TEAMS: Team[] = [
     hackathonName: 'AI Innovations Global Hackathon 2026',
     description: 'Building SquadUP - a verified skill-based team recommendation and anti-cheat assessment workspace.',
     leaderId: 'user-aditi',
+    inviteCode: 'SQ-NEXUS',
     createdAt: '2026-07-20',
     lookingForRoles: ['Backend Developer', 'AI/ML Engineer'],
     members: [
@@ -407,6 +408,7 @@ export const INITIAL_TEAMS: Team[] = [
     hackathonName: 'AI Innovations Global Hackathon 2026',
     description: 'Developing real-time multimodal healthcare diagnostics using medical imaging and speech synthesis.',
     leaderId: 'user-rohan',
+    inviteCode: 'SQ-NEURAL',
     createdAt: '2026-07-21',
     lookingForRoles: ['Frontend Developer', 'UI/UX Designer'],
     members: [

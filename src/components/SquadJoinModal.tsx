@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Team, UserRole } from '../types';
 import { BadgePill } from './BadgePill';
 import { useToast } from './Toast';
+import { api } from '../utils/api';
 import { 
   X, 
   Users, 
@@ -22,8 +23,9 @@ interface SquadJoinModalProps {
   teams: Team[];
   isOpen: boolean;
   onClose: () => void;
-  onJoinTeam: (teamId: string) => void;
+  onJoinTeam: (teamId: string, inviteCode?: string) => Promise<void> | void;
   onNavigateToAssessment: () => void;
+  initialCode?: string;
 }
 
 export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
@@ -33,13 +35,21 @@ export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
   isOpen,
   onClose,
   onJoinTeam,
-  onNavigateToAssessment
+  onNavigateToAssessment,
+  initialCode = ''
 }) => {
   const toast = useToast();
-  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [inviteCodeInput, setInviteCodeInput] = useState(initialCode);
   const [matchedTeam, setMatchedTeam] = useState<Team | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initialCode) {
+      setInviteCodeInput(initialCode);
+    }
+  }, [initialCode]);
 
   if (!isOpen) return null;
 
@@ -51,7 +61,7 @@ export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
     || verifiedSkills.find(s => s.badgeLevel === 'Red') 
     || null;
 
-  const handleSearchCode = (e: React.FormEvent) => {
+  const handleSearchCode = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = inviteCodeInput.trim().toUpperCase();
     if (!cleanCode) return;
@@ -59,19 +69,34 @@ export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
     setIsSearching(true);
     setErrorMsg(null);
 
-    setTimeout(() => {
-      // Find team with matching code or match with one of the available teams as demo fallback
-      const found = teams.find(t => t.inviteCode?.toUpperCase() === cleanCode) 
-        || teams.find(t => t.id.toLowerCase().includes(cleanCode.toLowerCase()))
-        || teams[0]; // fallback to active team for seamless demo
+    try {
+      // Find team with matching code or team id
+      let found = teams.find(t => t.inviteCode?.toUpperCase() === cleanCode) 
+        || teams.find(t => t.id.toUpperCase() === cleanCode)
+        || teams.find(t => t.id.toLowerCase().includes(cleanCode.toLowerCase()));
+
+      // If not found in current props, fetch fresh teams from backend state
+      if (!found) {
+        try {
+          const fresh = await api<{ teams: Team[] }>('/api/state');
+          if (fresh.teams && fresh.teams.length > 0) {
+            found = fresh.teams.find(t => t.inviteCode?.toUpperCase() === cleanCode)
+              || fresh.teams.find(t => t.id.toUpperCase() === cleanCode)
+              || fresh.teams.find(t => t.id.toLowerCase().includes(cleanCode.toLowerCase()));
+          }
+        } catch {
+          // fallback
+        }
+      }
 
       if (found) {
         setMatchedTeam(found);
       } else {
-        setErrorMsg('No squad found with this invite code. Please check and try again.');
+        setErrorMsg(`No squad found with code "${cleanCode}". Please check and try again.`);
       }
+    } finally {
       setIsSearching(false);
-    }, 600);
+    }
   };
 
   // Perform AI Compatibility & Badge Matching Analysis
@@ -133,7 +158,7 @@ export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
 
   const aiAnalysis = matchedTeam ? performAiAnalysis(matchedTeam) : null;
 
-  const handleConfirmJoin = () => {
+  const handleConfirmJoin = async () => {
     if (!matchedTeam) return;
     if (!hasVerifiedBadge) {
       toast.error('You must earn a verified skill badge before joining this team!');
@@ -141,9 +166,15 @@ export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
       onClose();
       return;
     }
-    onJoinTeam(matchedTeam.id);
-    toast.success(`🎉 You have joined "${matchedTeam.name}"! Welcome to the squad.`);
-    onClose();
+    setIsJoining(true);
+    try {
+      await onJoinTeam(matchedTeam.id, matchedTeam.inviteCode || matchedTeam.id);
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to join squad');
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   return (
@@ -197,6 +228,26 @@ export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
                 <Search size={14} />
                 <span>{isSearching ? 'Checking…' : 'Inspect Squad'}</span>
               </button>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-purple-300/70 pt-0.5">
+              <span>Quick try sample squads:</span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setInviteCodeInput('SQ-NEXUS'); setErrorMsg(null); }}
+                  className="px-2 py-0.5 rounded bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-purple-200 font-mono text-[10px] cursor-pointer"
+                >
+                  SQ-NEXUS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setInviteCodeInput('SQ-NEURAL'); setErrorMsg(null); }}
+                  className="px-2 py-0.5 rounded bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/30 text-purple-200 font-mono text-[10px] cursor-pointer"
+                >
+                  SQ-NEURAL
+                </button>
+              </div>
             </div>
 
             {errorMsg && (
@@ -303,11 +354,12 @@ export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
                 ) : (
                   <button
                     type="button"
+                    disabled={isJoining}
                     onClick={handleConfirmJoin}
-                    className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer"
+                    className="px-6 py-3 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white text-xs font-bold uppercase tracking-wider transition shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer"
                   >
                     <Check size={14} />
-                    <span>Confirm & Team Up</span>
+                    <span>{isJoining ? 'Joining Squad…' : 'Confirm & Team Up'}</span>
                   </button>
                 )}
               </div>

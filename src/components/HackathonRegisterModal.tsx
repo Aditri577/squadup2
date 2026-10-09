@@ -13,7 +13,8 @@ import {
   Calendar, 
   Send,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  KeyRound
 } from 'lucide-react';
 
 interface HackathonRegisterModalProps {
@@ -21,6 +22,7 @@ interface HackathonRegisterModalProps {
   currentUser: User;
   onClose: () => void;
   onJoinTeamMode: () => void;
+  onOpenJoinCodeModal?: () => void;
   onCreateTeam: (teamData: { 
     teamName: string; 
     inviteCode: string; 
@@ -45,6 +47,7 @@ export const HackathonRegisterModal: React.FC<HackathonRegisterModalProps> = ({
   currentUser,
   onClose,
   onJoinTeamMode,
+  onOpenJoinCodeModal,
   onCreateTeam
 }) => {
   const toast = useToast();
@@ -165,45 +168,71 @@ export const HackathonRegisterModal: React.FC<HackathonRegisterModalProps> = ({
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                {/* Option A: Join Team with AI */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                {/* Option 1: Join with Invite Code */}
+                {onOpenJoinCodeModal && (
+                  <div 
+                    onClick={() => {
+                      onClose();
+                      onOpenJoinCodeModal();
+                    }}
+                    className="p-5 rounded-2xl bg-gradient-to-b from-amber-900/20 to-purple-950/40 border border-amber-500/30 hover:border-amber-400 hover:scale-[1.02] transition-all cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div className="space-y-3">
+                      <div className="w-11 h-11 rounded-2xl bg-amber-600/20 border border-amber-500/40 flex items-center justify-center text-amber-300 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-lg shadow-amber-500/20">
+                        <KeyRound size={22} />
+                      </div>
+                      <h4 className="text-base font-bold text-white">Join via Invite Code</h4>
+                      <p className="text-xs text-purple-200/70 leading-relaxed">
+                        Have a 6-character squad code from a teammate? Enter it to instantly join their hackathon team.
+                      </p>
+                    </div>
+
+                    <div className="pt-5 flex items-center gap-2 text-xs font-bold text-amber-400 group-hover:text-amber-300">
+                      <span>Enter Squad Code</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Option 2: Join Team with AI */}
                 <div 
                   onClick={onJoinTeamMode}
-                  className="p-6 rounded-2xl bg-gradient-to-b from-purple-900/20 to-purple-950/40 border border-purple-500/30 hover:border-purple-400 hover:scale-[1.02] transition-all cursor-pointer group flex flex-col justify-between"
+                  className="p-5 rounded-2xl bg-gradient-to-b from-purple-900/20 to-purple-950/40 border border-purple-500/30 hover:border-purple-400 hover:scale-[1.02] transition-all cursor-pointer group flex flex-col justify-between"
                 >
                   <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-lg shadow-purple-500/20">
-                      <Sparkles size={24} />
+                    <div className="w-11 h-11 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 group-hover:bg-purple-600 group-hover:text-white transition-all shadow-lg shadow-purple-500/20">
+                      <Sparkles size={22} />
                     </div>
-                    <h4 className="text-base font-bold text-white">Join an Existing Team</h4>
+                    <h4 className="text-base font-bold text-white">Find Squad with AI</h4>
                     <p className="text-xs text-purple-200/70 leading-relaxed">
-                      AI will analyze your verified badges and recommend the most compatible squads looking for your role.
+                      AI matches your verified skill badges with existing squads looking for your exact role.
                     </p>
                   </div>
 
-                  <div className="pt-6 flex items-center gap-2 text-xs font-bold text-purple-400 group-hover:text-purple-300">
-                    <span>Find My Squad with AI</span>
+                  <div className="pt-5 flex items-center gap-2 text-xs font-bold text-purple-400 group-hover:text-purple-300">
+                    <span>Discover Squads</span>
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
 
-                {/* Option B: Create Team & Invite Friends */}
+                {/* Option 3: Create Team & Invite Friends */}
                 <div 
                   onClick={() => setStep('create')}
-                  className="p-6 rounded-2xl bg-gradient-to-b from-indigo-900/20 to-indigo-950/40 border border-indigo-500/30 hover:border-indigo-400 hover:scale-[1.02] transition-all cursor-pointer group flex flex-col justify-between"
+                  className="p-5 rounded-2xl bg-gradient-to-b from-indigo-900/20 to-indigo-950/40 border border-indigo-500/30 hover:border-indigo-400 hover:scale-[1.02] transition-all cursor-pointer group flex flex-col justify-between"
                 >
                   <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-lg shadow-indigo-500/20">
-                      <Plus size={24} />
+                    <div className="w-11 h-11 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-lg shadow-indigo-500/20">
+                      <Plus size={22} />
                     </div>
-                    <h4 className="text-base font-bold text-white">Create a New Team</h4>
+                    <h4 className="text-base font-bold text-white">Create New Team</h4>
                     <p className="text-xs text-purple-200/70 leading-relaxed">
-                      Become team leader, define missing roles, generate an invite code & shareable link for your friends.
+                      Lead a squad, set required roles, and generate a new invite code to share with friends.
                     </p>
                   </div>
 
-                  <div className="pt-6 flex items-center gap-2 text-xs font-bold text-indigo-400 group-hover:text-indigo-300">
-                    <span>Create Team & Invite</span>
+                  <div className="pt-5 flex items-center gap-2 text-xs font-bold text-indigo-400 group-hover:text-indigo-300">
+                    <span>Create & Invite</span>
                     <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>

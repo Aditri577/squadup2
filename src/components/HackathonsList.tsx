@@ -28,6 +28,7 @@ interface HackathonsListProps {
   onSelectHackathonFilter: (hackathonName: string) => void;
   currentUser?: User;
   onCreateTeam?: (teamData: any) => void;
+  onOpenJoinCodeModal?: () => void;
 }
 
 interface SubmittedProject {
@@ -72,12 +73,30 @@ const INITIAL_PROJECTS: SubmittedProject[] = [
 ];
 
 export const HackathonsList: React.FC<HackathonsListProps> = ({
-  hackathons,
+  hackathons: initialHackathons,
   onSelectHackathonFilter,
   currentUser,
-  onCreateTeam
+  onCreateTeam,
+  onOpenJoinCodeModal
 }) => {
   const toast = useToast();
+  const [items, setItems] = useState<Hackathon[]>(initialHackathons);
+
+  React.useEffect(() => {
+    setItems(initialHackathons);
+  }, [initialHackathons]);
+
+  React.useEffect(() => {
+    fetch('/api/hackathons')
+      .then(res => res.json())
+      .then(data => {
+        if (data.hackathons && data.hackathons.length > 0) {
+          setItems(data.hackathons);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const [projects, setProjects] = useState<SubmittedProject[]>(() => {
     const saved = localStorage.getItem('squadup_submitted_projects');
     return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
@@ -85,7 +104,7 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
 
   const [registeringHackathon, setRegisteringHackathon] = useState<Hackathon | null>(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
-  const [selectedHackathonTitle, setSelectedHackathonTitle] = useState(hackathons[0]?.title || '');
+  const [selectedHackathonTitle, setSelectedHackathonTitle] = useState(items[0]?.title || initialHackathons[0]?.title || '');
 
   // New project form state
   const [teamName, setTeamName] = useState('');
@@ -139,9 +158,11 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
     try {
       const resp = await fetch('/api/hackathons?refresh=true');
       if (!resp.ok) throw new Error('Sync failed');
+      const data = await resp.json();
+      if (data.hackathons && data.hackathons.length > 0) {
+        setItems(data.hackathons);
+      }
       toast.success('✅ Live hackathons synced from Devfolio!');
-      // Reload to re-fetch updated list from parent
-      setTimeout(() => window.location.reload(), 800);
     } catch {
       toast.error('❌ Could not sync — please try again.');
     } finally {
@@ -193,7 +214,7 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
 
       {/* Hackathons Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {hackathons.map((h) => (
+        {items.map((h) => (
           <div
             key={h.id}
             className="nixtio-card overflow-hidden flex flex-col justify-between group"
@@ -398,7 +419,7 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
                   onChange={e => setSelectedHackathonTitle(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-full bg-[#0b0813] border border-white/10 text-white font-semibold"
                 >
-                  {hackathons.map(h => (
+                  {items.map(h => (
                     <option key={h.id} value={h.title}>{h.title}</option>
                   ))}
                 </select>
@@ -508,6 +529,7 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
             joinedAt: new Date().toISOString()
           }}
           onClose={() => setRegisteringHackathon(null)}
+          onOpenJoinCodeModal={onOpenJoinCodeModal}
           onJoinTeamMode={() => {
             const hTitle = registeringHackathon.title;
             setRegisteringHackathon(null);

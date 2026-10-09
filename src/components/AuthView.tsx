@@ -5,6 +5,9 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
 } from "firebase/auth";
 
 import { auth, db } from "../firebase";
@@ -136,6 +139,13 @@ const AuthView: React.FC<AuthViewProps> = ({
     try {
       setIsSubmitting(true);
 
+      // Sign in to Firebase Auth
+      try {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+      } catch (fbErr) {
+        console.warn("Firebase Auth sign-in notice:", fbErr);
+      }
+
       const response = await api<AuthResponse>("/api/auth/login", {
         method: "POST",
         body: {
@@ -181,6 +191,35 @@ const AuthView: React.FC<AuthViewProps> = ({
     try {
       setIsSubmitting(true);
 
+      // 1. Create User in Firebase Authentication & Firestore
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        await updateProfile(userCredential.user, { displayName: name.trim() });
+
+        // Save document in Firestore users collection
+        await setDoc(
+          doc(db, "users", userCredential.user.uid),
+          {
+            uid: userCredential.user.uid,
+            name: name.trim(),
+            email: email.trim(),
+            role,
+            college: college.trim(),
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      } catch (fbErr: any) {
+        console.warn("Firebase Auth register notice:", fbErr);
+        if (fbErr.code === "auth/email-already-in-use") {
+          try {
+            await signInWithEmailAndPassword(auth, email.trim(), password);
+          } catch {}
+        }
+      }
+
+      // 2. Register in SquadUP Backend API
       const response = await api<AuthResponse>("/api/auth/register", {
         method: "POST",
         body: {
@@ -298,8 +337,9 @@ const AuthView: React.FC<AuthViewProps> = ({
 
       if (firebaseError.code === "auth/unauthorized-domain") {
         setIsSubmitting(false);
+        const host = window.location.hostname;
         setError(
-          "This domain is not authorized in Firebase. Add squadup-2.vercel.app in Firebase Console → Authentication → Settings → Authorized domains."
+          `This domain (${host}) is not authorized in Firebase. In Firebase Console → Authentication → Settings → Authorized domains, click "Add domain" and enter "vercel.app" (or "${host}").`
         );
         return;
       }

@@ -96,6 +96,7 @@ const INITIAL_TEAMS: any[] = [
     hackathonName: 'AI Innovations Global Hackathon 2026',
     description: 'Building SquadUP - a verified skill-based team recommendation and anti-cheat assessment workspace.',
     leaderId: 'user-aditi',
+    inviteCode: 'SQ-NEXUS',
     createdAt: '2026-07-20',
     lookingForRoles: ['Backend Developer', 'AI/ML Engineer'],
     members: [
@@ -551,7 +552,7 @@ router.post("/hackathons", requireAuth, (req: any, res) => {
   }
 });
 
-const IMMUTABLE_USER_FIELDS = ["id", "email", "passwordHash", "level", "teamId", "xpPoints"];
+const IMMUTABLE_USER_FIELDS = ["id", "email", "passwordHash", "level", "xpPoints"];
 
 router.put("/users/:id", requireAuth, (req: any, res) => {
   try {
@@ -900,7 +901,15 @@ router.post("/teams/join-by-code", requireAuth, async (req: any, res) => {
       });
     }
 
-    // Check already member
+    // Check and update team memberships
+    const oldTeamId = user.teamId;
+    if (oldTeamId && oldTeamId !== team.id) {
+      const oldTeam = dbTeams.find((t: any) => t.id === oldTeamId);
+      if (oldTeam) {
+        oldTeam.members = oldTeam.members.filter((m: any) => m.userId !== user.id);
+      }
+    }
+
     const alreadyMember = team.members.some((m: any) => m.userId === user.id);
     if (!alreadyMember) {
       team.members.push({
@@ -909,16 +918,16 @@ router.post("/teams/join-by-code", requireAuth, async (req: any, res) => {
         joinedAt: new Date().toISOString().split("T")[0],
         isLeader: false
       });
-
-      const newXp = (user.xpPoints || 100) + 50;
-      dbUsers[userIdx] = {
-        ...user,
-        teamId: team.id,
-        lookingForTeam: false,
-        xpPoints: newXp,
-        level: getXpLevel(newXp)
-      };
     }
+
+    const newXp = (user.xpPoints || 100) + (alreadyMember ? 0 : 50);
+    dbUsers[userIdx] = {
+      ...user,
+      teamId: team.id,
+      lookingForTeam: false,
+      xpPoints: newXp,
+      level: getXpLevel(newXp)
+    };
 
     res.json({ success: true, team, user: dbUsers[userIdx] });
   } catch (error: any) {
