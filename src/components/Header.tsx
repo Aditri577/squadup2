@@ -208,56 +208,56 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Right Actions & Controls - Responsive */}
-          <div className="flex items-center gap-2 sm:gap-3 xl:gap-4 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             
             {/* Global Cmd + K Search Trigger Button */}
             {onOpenCommandPalette && (
               <button
                 onClick={onOpenCommandPalette}
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-full bg-[#120a24] border border-purple-500/25 hover:border-purple-400/50 text-slate-300 hover:text-white text-xs font-medium transition cursor-pointer shadow-md shrink-0"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#120a24] border border-purple-500/25 hover:border-purple-400/50 text-slate-300 hover:text-white text-xs font-medium transition cursor-pointer shadow-md shrink-0"
                 title="Open Command Palette (Cmd + K)"
               >
                 <Search size={14} className="text-purple-400" />
-                <span className="hidden 2xl:inline">Search...</span>
-                <kbd className="px-1.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/30 text-[10px] text-purple-300 font-mono">
+                <kbd className="hidden 2xl:inline px-1.5 py-0.5 rounded bg-purple-950/80 border border-purple-500/30 text-[10px] text-purple-300 font-mono">
                   ⌘K
                 </kbd>
               </button>
             )}
 
-            {/* Join Squad with Code Button */}
+            {/* Join Squad with Code Button — icon only until 2xl */}
             {onOpenSquadJoinModal && (
               <button
                 onClick={onOpenSquadJoinModal}
-                className="px-3 py-1.5 xl:px-4 xl:py-2 rounded-full bg-gradient-to-r from-purple-600/30 to-indigo-600/30 border border-purple-500/40 hover:border-purple-400 text-purple-200 hover:text-white text-[11px] xl:text-xs font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5 shadow-md shrink-0"
+                className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600/30 to-indigo-600/30 border border-purple-500/40 hover:border-purple-400 text-purple-200 hover:text-white text-xs font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5 shadow-md shrink-0"
                 title="Join Squad via Invite Code"
               >
                 <KeyRound size={13} className="text-amber-400" />
-                <span className="hidden sm:inline">JOIN WITH CODE</span>
+                <span className="hidden 2xl:inline">JOIN WITH CODE</span>
               </button>
             )}
 
-            {/* Team Invitations Pill Button */}
+            {/* Team Invitations — icon only until xl */}
             <button
               onClick={onOpenRequestsModal}
-              className="relative px-3 py-1.5 xl:px-4 xl:py-2 rounded-full bg-[#120a24] border border-purple-500/25 hover:border-purple-400/50 text-white text-[11px] xl:text-xs font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5 sm:gap-2 shadow-md shrink-0"
+              className="relative px-2.5 py-1.5 rounded-full bg-[#120a24] border border-purple-500/25 hover:border-purple-400/50 text-white text-xs font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5 shadow-md shrink-0"
+              title="Team Invitations"
             >
               <Bell size={14} className="text-purple-400" />
-              <span className="hidden xl:inline">INVITES</span>
+              <span className="hidden 2xl:inline">INVITES</span>
               {pendingRequestsCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-purple-500 text-white text-[10px] font-bold flex items-center justify-center shadow-lg shadow-purple-500/40">
+                <span className="w-4 h-4 rounded-full bg-purple-500 text-white text-[9px] font-bold flex items-center justify-center shadow-lg shadow-purple-500/40">
                   {pendingRequestsCount}
                 </span>
               )}
             </button>
 
-            {/* Level & XP Status Widget with Popover */}
+            {/* Level & XP Status Widget — hidden until xl */}
             <div className="relative hidden xl:block shrink-0">
               <button
                 onClick={() => setShowXPPopover(!showXPPopover)}
-                className="flex items-center gap-1.5 xl:gap-2 bg-purple-950/40 border border-purple-500/30 hover:border-purple-400/60 px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-full text-[11px] xl:text-xs font-bold transition cursor-pointer shadow-md"
+                className="flex items-center gap-1.5 bg-purple-950/40 border border-purple-500/30 hover:border-purple-400/60 px-2.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shadow-md"
               >
-                <Zap size={13} className="text-purple-400 fill-purple-400" />
+                <Zap size={12} className="text-purple-400 fill-purple-400" />
                 <span className="text-purple-300">Lvl {currentLevel}</span>
                 <span className="hidden 2xl:inline text-slate-500">•</span>
                 <span className="hidden 2xl:inline text-slate-200">{currentXP} XP</span>
@@ -291,21 +291,13 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="relative shrink-0">
               <button
                 onClick={() => setShowUserDropdown(!showUserDropdown)}
-                className="flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-full border border-purple-500/30 bg-[#140e24] hover:border-purple-400/60 transition cursor-pointer"
+                className="flex items-center gap-1.5 p-1 sm:p-1.5 rounded-full border border-purple-500/30 bg-[#140e24] hover:border-purple-400/60 transition cursor-pointer"
                 title={`${currentUser.name} (${currentUser.role})`}
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-purple-500/30 flex items-center justify-center p-0.5 bg-slate-950 shrink-0">
+                <div className="w-7 h-7 rounded-full overflow-hidden border border-purple-500/30 flex items-center justify-center p-0.5 bg-slate-950 shrink-0">
                   {renderAvatar(currentUser.avatar, "w-full h-full")}
                 </div>
-                <div className="text-left hidden 2xl:block pr-1 max-w-[100px]">
-                  <div className="text-xs font-bold text-white leading-none truncate">
-                    {currentUser.name}
-                  </div>
-                  <div className="text-[9px] text-purple-300 font-medium mt-0.5 truncate">
-                    {currentUser.role}
-                  </div>
-                </div>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${showUserDropdown ? 'rotate-180 text-purple-400' : ''}`} />
+                <ChevronDown size={13} className={`text-slate-400 transition-transform duration-200 ${showUserDropdown ? 'rotate-180 text-purple-400' : ''}`} />
               </button>
 
               {/* Profile Menu Dropdown */}
@@ -319,6 +311,11 @@ export const Header: React.FC<HeaderProps> = ({
                     <p className="text-[10px] text-purple-300 font-medium truncate mt-0.5">
                       {currentUser.role} • {currentUser.college || 'SquadUP Member'}
                     </p>
+                    {/* XP shown in dropdown on smaller screens */}
+                    <p className="text-[10px] text-slate-400 mt-0.5 xl:hidden">
+                      <Zap size={9} className="inline text-purple-400 fill-purple-400 mr-0.5" />
+                      Level {currentLevel} • {currentXP} XP
+                    </p>
                   </div>
 
                   <div className="py-1">
@@ -330,6 +327,17 @@ export const Header: React.FC<HeaderProps> = ({
                       <UserIcon size={14} className="text-purple-400" />
                       <span>My Profile & Skills</span>
                     </Link>
+
+                    {/* JOIN WITH CODE inside dropdown on smaller screens */}
+                    {onOpenSquadJoinModal && (
+                      <button
+                        onClick={() => { setShowUserDropdown(false); onOpenSquadJoinModal(); }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-xs font-semibold text-slate-200 hover:bg-purple-950/40 hover:text-white transition 2xl:hidden"
+                      >
+                        <KeyRound size={14} className="text-amber-400" />
+                        <span>Join with Code</span>
+                      </button>
+                    )}
 
                     {demoMode && (
                       <div className="px-4 py-2 border-t border-purple-500/10">

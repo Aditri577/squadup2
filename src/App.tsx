@@ -138,7 +138,7 @@ function AppShell() {
       toast.error(message);
       return null;
     }
-  }, [signOut]);
+  }, [signOut, toast]);
 
   const handleAuthSuccess = async (token: string, user: User) => {
     setToken(token);
@@ -556,6 +556,7 @@ function TeamRoute({ teams, currentUser, allUsers, onCreateTeam, onSendFeedback 
       onCreateTeam={onCreateTeam}
       onNavigateToDiscoveryWithRole={(_role: UserRole) => navigate('/discover')}
       onSendFeedback={async (fb) => { onSendFeedback(fb); }}
+      onOpenJoinModal={() => navigate('/teams')}
     />
   );
 }

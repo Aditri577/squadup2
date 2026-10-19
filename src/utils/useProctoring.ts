@@ -93,6 +93,7 @@ export function useFaceTracking(
   const onViolationRef = useRef(onViolation);
   onViolationRef.current = onViolation;
   const firedRef = useRef(false);
+  const faceLastFiredAt = useRef<number | null>(null); // P2: refire cooldown tracker
 
   useEffect(() => {
     if (!active) {
@@ -103,13 +104,18 @@ export function useFaceTracking(
       return;
     }
 
-    const INTERVAL_MS = 2000;
-    // How many brightness-drop points triggers an alert
-    const DROP_THRESHOLD = 40;
-    // Minimum central brightness — below this, face is considered gone
-    const DARK_THRESHOLD = 15;
-    // Upward gaze: top region brighter than bottom by this many points
-    const GAZE_UP_THRESHOLD = 35;
+    // P2 Fix: Faster check interval (was 2000ms → 1500ms)
+    const INTERVAL_MS = 1500;
+    // P2 Fix: Tighter brightness-drop threshold (was 40 → 25) — face turning away detected sooner
+    const DROP_THRESHOLD = 25;
+    // P2 Fix: Higher dark threshold (was 15 → 20) — dim room face-gone detected better
+    const DARK_THRESHOLD = 20;
+    // P2 Fix: Lower gaze threshold (was 35 → 18) — slight upward gaze (phone) now detected
+    const GAZE_UP_THRESHOLD = 18;
+    // P2 New: Brightness SPIKE = phone screen in frame (phone screen is bright)
+    const SPIKE_THRESHOLD = 35;
+    // P2 New: Re-fire cooldown — repeated violations every 45s
+    const FACE_REFIRE_COOLDOWN_MS = 45_000;
 
     const id = window.setInterval(() => {
       const video = videoRef.current;
@@ -172,8 +178,10 @@ export function useFaceTracking(
       const isDark = centralBrightness < DARK_THRESHOLD;
       const isDrop = centralBrightness < baseline - DROP_THRESHOLD;
       const isGazeUp = topBrightness - botBrightness > GAZE_UP_THRESHOLD;
+      // P2 New: Phone/bright-screen in frame causes a sudden brightness SPIKE
+      const isSpike = centralBrightness > baseline + SPIKE_THRESHOLD;
 
-      const away = isDark || isDrop || isGazeUp;
+      const away = isDark || isDrop || isGazeUp || isSpike;
 
       if (away) {
         consecutiveAway.current += 1;
@@ -184,10 +192,16 @@ export function useFaceTracking(
       }
 
       // Require 2+ consecutive suspicious frames before firing
+      // P2 New: Re-fire after cooldown so repeated violations count
+      const now = Date.now();
+      const canRefire = !firedRef.current ||
+        (faceLastFiredAt.current !== null && now - faceLastFiredAt.current >= FACE_REFIRE_COOLDOWN_MS);
+
       if (consecutiveAway.current >= 2) {
         setFaceStatus('away');
-        if (!firedRef.current) {
+        if (canRefire) {
           firedRef.current = true;
+          faceLastFiredAt.current = now;
           onViolationRef.current(
             'FACE_LOOK_AWAY',
             'Face not detected or gaze away from screen during the proctored session!',
@@ -376,10 +390,13 @@ export function useProctoring({ active, onViolation }: UseProctoringOptions) {
     const bufferLength = analyser.fftSize;
     const timeDomainData = new Float32Array(bufferLength);
 
-    // Thresholds
-    const RMS_THRESHOLD = 0.035;      // Speech detection threshold
-    const SUSTAINED_MS = 2000;        // Must be above threshold for 2 s to fire
+    // P1 Fix: Lower threshold (was 0.035 → 0.015) — halki awaaz bhi catch hogi, fan/AC still safe
+    const RMS_THRESHOLD = 0.015;
+    // P1 Fix: Shorter sustained window (was 2000ms → 1000ms) — 1 sec ki baat bhi flag hogi
+    const SUSTAINED_MS = 1000;
     const POLL_INTERVAL_MS = 250;     // Check every 250 ms
+    // P1 New: Re-fire cooldown — repeated talking violations every 30s
+    const VOICE_REFIRE_COOLDOWN_MS = 30_000;
 
     const id = window.setInterval(() => {
       if (!analyserRef.current) return;
@@ -401,10 +418,18 @@ export function useProctoring({ active, onViolation }: UseProctoringOptions) {
         if (voiceSustainStart.current === null) {
           voiceSustainStart.current = Date.now();
         }
-        // Fire violation if sustained past threshold
-        const elapsed = Date.now() - voiceSustainStart.current;
-        if (elapsed >= SUSTAINED_MS && !voiceFiredRef.current) {
+        // P1 New: Re-fire after cooldown so repeated talking is flagged again
+        const now = Date.now();
+        const elapsed = now - voiceSustainStart.current;
+        const voiceLastFired = voiceFiredRef.current
+          ? (voiceSustainStart.current ?? 0)
+          : null;
+        const canRefire = !voiceFiredRef.current ||
+          (voiceLastFired !== null && now - voiceLastFired >= VOICE_REFIRE_COOLDOWN_MS);
+
+        if (elapsed >= SUSTAINED_MS && canRefire) {
           voiceFiredRef.current = true;
+          voiceSustainStart.current = now; // reset sustain window after firing
           onViolationRef.current(
             'VOICE_DISCUSSION_DETECTED',
             'Sustained voice/discussion detected during proctored session!',

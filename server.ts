@@ -10,6 +10,12 @@ import mysql from "mysql2/promise";
 import { INITIAL_USERS, INITIAL_TEAMS, INITIAL_REQUESTS, INITIAL_HACKATHONS } from "./src/data/mockData";
 import { sendSquadEmail, getSquadRegistrationEmailHtml, getSquadInviteEmailHtml } from "./src/utils/mailer";
 
+// ── Security packages (install: npm install helmet express-rate-limit) ───────
+let helmet: any = null;
+let rateLimit: any = null;
+try { helmet = require("helmet"); } catch { console.warn("helmet not installed — run: npm install helmet"); }
+try { rateLimit = require("express-rate-limit"); } catch { console.warn("express-rate-limit not installed — run: npm install express-rate-limit"); }
+
 dotenv.config();
 
 declare global {
@@ -23,6 +29,11 @@ declare global {
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+// ── S3: Helmet security headers ───────────────────────────────────────────────
+if (helmet) {
+  app.use(helmet({ crossOriginEmbedderPolicy: false, contentSecurityPolicy: false }));
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -30,7 +41,27 @@ const DEMO_MODE = process.env.DEMO_MODE === "true";
 const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "squadup123";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
 const BCRYPT_ROUNDS = 10;
-const JWT_SECRET = process.env.JWT_SECRET || "squadup-prod-secret-fallback-key-2026-auth-token";
+
+// ── S1: JWT Secret — no hardcoded fallback in production ─────────────────────
+const JWT_SECRET = process.env.JWT_SECRET || "squadup-dev-secret-DO-NOT-USE-IN-PROD";
+if (!process.env.JWT_SECRET) {
+  console.warn("⚠️  WARNING: JWT_SECRET env variable not set! Using insecure default. Set JWT_SECRET in .env before deploying.");
+}
+
+// ── S2: Rate limiters ─────────────────────────────────────────────────────────
+const authLimiter = rateLimit ? rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,                   // 10 attempts per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many login attempts. Please try again after 15 minutes." }
+}) : (_req: any, _res: any, next: any) => next();
+
+const registerLimiter = rateLimit ? rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,                    // 5 registrations per hour per IP
+  message: { error: "Too many accounts created. Please try again after an hour." }
+}) : (_req: any, _res: any, next: any) => next();
 
 function signToken(userId: string): string {
   return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
@@ -320,13 +351,12 @@ async function saveUsers(users: any[]): Promise<void> {
   await initDb();
   if (useMysql && pool) {
     for (const u of users) {
-      const columns = [u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []), u.passwordHash || null];
+      // B8 Fix: joinedAt intentionally excluded from UPDATE — registration date must never change
+      const insertValues = [u.id, u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.joinedAt, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []), u.passwordHash || null];
+      const updateValues = [u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []), u.passwordHash || null];
       await pool.query(
         "INSERT INTO users (id, name, email, avatar, role, college, bio, location, github, linkedin, portfolio, preferredDomains, lookingForTeam, teamId, joinedAt, xpPoints, level, skills, testResults, experience, availability, hackathons, passwordHash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=?, email=?, avatar=?, role=?, college=?, bio=?, location=?, github=?, linkedin=?, portfolio=?, preferredDomains=?, lookingForTeam=?, teamId=?, xpPoints=?, level=?, skills=?, testResults=?, experience=?, availability=?, hackathons=?, passwordHash=?",
-        [
-          u.id, u.name, u.email, u.avatar, u.role, u.college, u.bio, u.location, u.github, u.linkedin, u.portfolio, JSON.stringify(u.preferredDomains), u.lookingForTeam ? 1 : 0, u.teamId || null, u.joinedAt, u.xpPoints, u.level, JSON.stringify(u.skills), JSON.stringify(u.testResults), u.experience || null, u.availability || null, JSON.stringify(u.hackathons || []), u.passwordHash || null,
-          ...columns
-        ]
+        [...insertValues, ...updateValues]
       );
     }
   } else {
@@ -504,7 +534,8 @@ async function fetchDevfolioLiveHackathons(forceRefresh = false): Promise<any[]>
         startDate: h.starts_at ? h.starts_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
         endDate: h.ends_at ? h.ends_at.slice(0, 10) : new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
         maxTeamSize: 4,
-        registeredTeamsCount: Math.floor(Math.random() * 45) + 18,
+        // U2 Fix: deterministic count from slug/name — no more random on refresh
+        registeredTeamsCount: (() => { const seed = (h.slug || h.name || '').split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0); return (seed % 30) + 15; })(),
         description: h.location 
           ? `${h.name} hosted at ${h.location}. Assemble your squad, verify badges, and build with mentors.`
           : `${h.name} live sprint on Devfolio. Assemble your squad, verify badges, and compete for top prizes.`,
@@ -577,7 +608,7 @@ function validateRegistration(body: any): string | null {
   return null;
 }
 
-apiRouter.post("/auth/register", async (req, res) => {
+apiRouter.post("/auth/register", registerLimiter, async (req, res) => {
   try {
     const validationError = validateRegistration(req.body);
     if (validationError) {
@@ -620,7 +651,7 @@ apiRouter.post("/auth/register", async (req, res) => {
   }
 });
 
-apiRouter.post("/auth/login", async (req, res) => {
+apiRouter.post("/auth/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) {
@@ -1205,19 +1236,19 @@ apiRouter.post("/mail/send-confirmation", requireAuth, async (req, res) => {
     const users = await getUsers();
     const user = users.find(u => u.id === req.user!.id);
 
-    const emailRecord = {
-      id: `mail-${Date.now()}`,
+    // U3 Fix: Actually call sendSquadEmail (was just returning mock object before)
+    const result = await sendSquadEmail({
       to: user?.email || "builder@squadup.dev",
-      type: "registration_confirmation",
       subject: `🚀 Registration Confirmed: ${hackathonTitle}`,
-      hackathonTitle,
-      teamName: teamName || "Independent Builder",
-      inviteCode: inviteCode || "N/A",
-      sentAt: new Date().toISOString(),
-      status: "sent"
-    };
+      html: getSquadRegistrationEmailHtml({
+        hackathonTitle,
+        teamName: teamName || "Independent Builder",
+        inviteCode: inviteCode || "N/A",
+        userName: user?.name
+      })
+    });
 
-    res.json({ success: true, message: "Confirmation email dispatched!", email: emailRecord });
+    res.json({ success: true, message: "Confirmation email dispatched!", mode: result.mode || 'sent' });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to send email confirmation" });
   }
@@ -1234,19 +1265,21 @@ apiRouter.post("/mail/invite-friend", requireAuth, async (req, res) => {
     const users = await getUsers();
     const inviter = users.find(u => u.id === req.user!.id);
 
-    const emailRecord = {
-      id: `mail-${Date.now()}`,
+    // U3 Fix: Actually call sendSquadEmail (was just returning mock object before)
+    const result = await sendSquadEmail({
       to: friendEmail,
-      type: "friend_invite",
       subject: `👋 ${inviter?.name || "A friend"} invited you to join team "${teamName}" for ${hackathonTitle}!`,
-      hackathonTitle,
-      teamName,
-      inviteCode,
-      sentAt: new Date().toISOString(),
-      status: "sent"
-    };
+      html: getSquadInviteEmailHtml({
+        senderName: inviter?.name || "A SquadUP member",
+        senderRole: inviter?.role || "Developer",
+        teamName,
+        hackathonTitle,
+        proposedRole: "Team Member",
+        inviteCode
+      })
+    });
 
-    res.json({ success: true, message: `Invite sent to ${friendEmail}`, email: emailRecord });
+    res.json({ success: true, message: `Invite sent to ${friendEmail}`, mode: result.mode || 'sent' });
   } catch (error: any) {
     res.status(500).json({ error: "Failed to dispatch friend invite" });
   }

@@ -4,6 +4,7 @@ import { BadgePill } from './BadgePill';
 import { KanbanBoard } from './KanbanBoard';
 import { AIPitchGenerator } from './AIPitchGenerator';
 import { TeamChatSimulator } from './TeamChatSimulator';
+import { api } from '../utils/api';
 import { 
   Presentation, 
   MessageSquare, 
@@ -118,17 +119,15 @@ export const TeamWorkspace: React.FC<TeamWorkspaceProps> = ({
         skills: tm.user.skills
       }));
 
-      const res = await fetch('/api/ai/project-ideas', {
+      const data = await api<{ ideas: AIProjectIdea[] }>('/api/ai/project-ideas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           hackathonTitle: activeTeam.hackathonName,
           hackathonDomain: 'AI/GenAI & Full Stack',
           teamMembers: teamSummary
-        })
+        }
       });
 
-      const data = await res.json();
       if (data.ideas && Array.isArray(data.ideas)) {
         setAiIdeas(data.ideas);
       }
@@ -143,10 +142,15 @@ export const TeamWorkspace: React.FC<TeamWorkspaceProps> = ({
     e.preventDefault();
     if (!teamName) return;
 
+    // B7 Fix: derive hackathonId from hackathonName instead of hardcoding 'hack-1'
     const generatedCode = 'SQ-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const derivedHackathonId = hackathonName
+      ? 'hack-' + hackathonName.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 20)
+      : '';
+
     onCreateTeam({
       name: teamName,
-      hackathonId: 'hack-1',
+      hackathonId: derivedHackathonId,
       hackathonName,
       description,
       leaderId: currentUser.id,

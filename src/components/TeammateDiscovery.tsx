@@ -104,8 +104,10 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
   const [aiMatchAnalysis, setAiMatchAnalysis] = useState<string | null>(null);
   const [isAnalyzingAi, setIsAnalyzingAi] = useState(false);
 
-  // Check if current user has any verified badges
-  const isCurrentUserVerified = currentUser.skills.some(s => s.badgeLevel === 'Green' || s.badgeLevel === 'Yellow');
+  // A single proctored badge of ANY level (Green/Yellow/Red) OR any testResult unlocks discovery
+  const isCurrentUserVerified =
+    currentUser.skills.some(s => s.badgeLevel !== 'Unverified') ||
+    (currentUser.testResults?.length ?? 0) > 0;
 
   // Helper functions for skill tags
   const handleAddSkill = () => {
@@ -179,11 +181,12 @@ export const TeammateDiscovery: React.FC<TeammateDiscoveryProps> = ({
       return false;
     }
 
-    // 7. Hackathon Filter
+    // 7. Hackathon Filter — match against hackathons[] OR preferredDomains as fallback
     if (appliedFilters.hackathon !== 'all') {
-      if (!u.hackathons || !u.hackathons.includes(appliedFilters.hackathon)) {
-        return false;
-      }
+      const hackathonLower = appliedFilters.hackathon.toLowerCase();
+      const inHackathons = u.hackathons?.some(h => h.toLowerCase().includes(hackathonLower));
+      const inDomains = u.preferredDomains?.some(d => hackathonLower.includes(d.toLowerCase()));
+      if (!inHackathons && !inDomains) return false;
     }
 
     return true;

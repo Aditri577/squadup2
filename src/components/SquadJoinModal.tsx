@@ -45,11 +45,15 @@ export const SquadJoinModal: React.FC<SquadJoinModalProps> = ({
   const [isJoining, setIsJoining] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // B6 Fix: Reset all state every time modal opens to prevent stale results
   React.useEffect(() => {
-    if (initialCode) {
-      setInviteCodeInput(initialCode);
+    if (isOpen) {
+      setInviteCodeInput(initialCode || '');
+      setMatchedTeam(null);
+      setErrorMsg(null);
+      setIsJoining(false);
     }
-  }, [initialCode]);
+  }, [isOpen, initialCode]);
 
   if (!isOpen) return null;
 

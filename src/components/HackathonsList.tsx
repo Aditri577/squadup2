@@ -37,6 +37,9 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
   const toast = useToast();
   const [items, setItems] = useState<Hackathon[]>(initialHackathons);
 
+  // U1 Fix: Track actual sync status instead of always showing green
+  const [syncStatus, setSyncStatus] = React.useState<'unknown' | 'connected' | 'failed'>('unknown');
+
   React.useEffect(() => {
     setItems(initialHackathons);
   }, [initialHackathons]);
@@ -47,9 +50,10 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
       .then(data => {
         if (data.hackathons && data.hackathons.length > 0) {
           setItems(data.hackathons);
+          setSyncStatus('connected');
         }
       })
-      .catch(() => {});
+      .catch(() => setSyncStatus('failed'));
   }, []);
 
   const [registeringHackathon, setRegisteringHackathon] = useState<Hackathon | null>(null);
@@ -64,9 +68,11 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
       const data = await resp.json();
       if (data.hackathons && data.hackathons.length > 0) {
         setItems(data.hackathons);
+        setSyncStatus('connected');
       }
       toast.success('✅ Live hackathons synced from Devfolio!');
     } catch {
+      setSyncStatus('failed');
       toast.error('❌ Could not sync — please try again.');
     } finally {
       setSyncing(false);
@@ -87,11 +93,26 @@ export const HackathonsList: React.FC<HackathonsListProps> = ({
           <p className="text-xs sm:text-sm text-purple-200/80 mt-1">
             Browse upcoming competitions, form squads with verified technical badges, and submit projects.
           </p>
+          {/* U1 Fix: Dynamic badge based on real sync status */}
           <div className="mt-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-              <Radio size={10} className="animate-pulse" />
-              Live Devfolio Feed Connected
-            </span>
+            {syncStatus === 'connected' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                <Radio size={10} className="animate-pulse" />
+                Live Devfolio Feed Connected
+              </span>
+            )}
+            {syncStatus === 'failed' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-[10px] font-bold uppercase tracking-wider">
+                <Radio size={10} />
+                Devfolio Sync Failed — Showing Cached Data
+              </span>
+            )}
+            {syncStatus === 'unknown' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/15 border border-slate-500/30 text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                <Radio size={10} className="animate-pulse" />
+                Connecting to Devfolio…
+              </span>
+            )}
           </div>
         </div>
 

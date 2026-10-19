@@ -120,6 +120,9 @@ const AuthView: React.FC<AuthViewProps> = ({
     }, 700);
   };
 
+  // U4: Email format regex — same as backend
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -128,6 +131,12 @@ const AuthView: React.FC<AuthViewProps> = ({
 
     if (!email.trim()) {
       setError("Please enter your email.");
+      return;
+    }
+
+    // U4 Fix: validate email format on frontend too
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setError("Please enter a valid email address (e.g. you@example.com).");
       return;
     }
 
@@ -178,8 +187,20 @@ const AuthView: React.FC<AuthViewProps> = ({
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must contain at least 6 characters.");
+    // U4 Fix: validate email format on signup too
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setError("Please enter a valid email address (e.g. you@example.com).");
+      return;
+    }
+
+    // U5 Fix: stronger password — min 8 chars + at least 1 number
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    if (!/\d/.test(password)) {
+      setError("Password must contain at least one number (e.g. Squad@2024).");
       return;
     }
 
